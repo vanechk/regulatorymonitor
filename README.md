@@ -1,59 +1,76 @@
 # TaxNewsRadar
 
-Система мониторинга налоговых новостей для российских специалистов и частных лиц.
+Система мониторинга налоговых новостей и документов.
 
-## Установка
+## Возможности
+- Мониторинг новостей из разных источников (веб-сайты, Telegram)
+- Ключевые слова и фильтрация
+- Экспорт в Excel
+- Email-уведомления и отчёты
+- Современный интерфейс на React + Tailwind CSS
 
-1. Клонируйте репозиторий:
+---
+
+## Быстрый старт
+
+### 1. Клонирование репозитория
 ```bash
-git clone https://github.com/yourusername/taxnewsradar.git
-cd taxnewsradar
+git clone https://github.com/ВАШ_ЛОГИН/ВАШ_РЕПОЗИТОРИЙ.git
+cd ВАШ_РЕПОЗИТОРИЙ
 ```
 
-2. Установите зависимости:
+### 2. Установка зависимостей
 ```bash
 npm install
 ```
 
-3. Настройте базу данных:
-- Установите PostgreSQL
-- Создайте базу данных:
-```bash
-createdb taxnewsradar_test
-```
-- Настройте переменные окружения в файле `.env`
+### 3. Настройка переменных окружения
+Создайте файл `.env` в корне проекта:
 
-4. Примените миграции базы данных:
-```bash
-npx prisma migrate dev
+```
+DATABASE_URL="mysql://user:password@localhost:3306/taxnewsradar"
 ```
 
-## Запуск
+- Для PostgreSQL используйте:
+  ```
+  DATABASE_URL="postgresql://user:password@localhost:5432/taxnewsradar"
+  ```
 
-### Разработка
+### 4. Миграции и генерация Prisma Client
+```bash
+npx prisma migrate dev --name init
+npx prisma generate
+```
+
+### 5. Запуск проекта
 ```bash
 npm run dev
 ```
+- Откроется клиент: http://localhost:5173
+- Сервер API: http://localhost:3000
 
-### Тестирование
+### 6. Работа с базой данных
+Для ручного добавления/редактирования данных используйте Prisma Studio:
 ```bash
-npm test
+npx prisma studio
 ```
 
+---
+
 ## Структура проекта
+- `src/client` — фронтенд (React, Vite, Tailwind)
+- `src/server` — серверная логика (Express, Prisma)
+- `prisma/schema.prisma` — схема базы данных
+- `src/routes/api.ts` — основные API-роуты
 
-- `src/` - исходный код
-  - `api/` - API endpoints
-  - `components/` - React компоненты
-  - `test/` - тесты
-  - `db/` - настройки базы данных
-  - `utils/` - вспомогательные функции
+---
 
-## Технологии
+## Важно
+- Не забудьте добавить `.env` и `node_modules/` в `.gitignore`.
+- Для работы с MySQL/PostgreSQL база данных должна быть создана заранее.
+- Для тестовых данных используйте POST-запросы к API или Prisma Studio.
 
-- React
-- TypeScript
-- Prisma
-- PostgreSQL
-- Jest
-- React Query 
+---
+
+## Контакты
+Если возникли вопросы — пишите! 
