@@ -15,14 +15,18 @@
 
 ### 1. Клонирование репозитория
 ```bash
-git clone https://github.com/ВАШ_ЛОГИН/ВАШ_РЕПОЗИТОРИЙ.git
-cd ВАШ_РЕПОЗИТОРИЙ
+git clone git@github.com:vanechk/regulatorymonitor.git
+cd regulatorymonitor
 ```
 
 ### 2. Установка зависимостей
 ```bash
 npm install
 ```
+Возможно потребуется установка node js
+https://nodejs.org/en
+
+Если не получится установить через сайт, то пишите в deepseek coder, он выдаст необходимые команды
 
 ### 3. Настройка переменных окружения
 Создайте файл `.env` в корне проекта:
@@ -31,16 +35,18 @@ npm install
 DATABASE_URL="mysql://user:password@localhost:3306/taxnewsradar"
 ```
 
-- Для PostgreSQL используйте:
-  ```
-  DATABASE_URL="postgresql://user:password@localhost:5432/taxnewsradar"
-  ```
+До выполнения этой команды необходимо установить mysql базу
+https://www.mysql.com/
+Нужно будет установить mysql, задать пароль и создать новую базу данных 
+
+Если не получится установить через сайт, то пишите в deepseek coder, он выдаст необходимые команды
 
 ### 4. Миграции и генерация Prisma Client
 ```bash
 npx prisma migrate dev --name init
 npx prisma generate
 ```
+Если база данных установлена, то с этим шагом проблем быть не должно
 
 ### 5. Запуск проекта
 ```bash
