@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { fetchAndProcessNews, sendSelectedNewsEmail } from '../../api';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -9,7 +10,7 @@ router.get('/sources', async (req, res) => {
   try {
     const sources = await prisma.source.findMany();
     res.json(sources);
-  } catch (error) {
+  } catch (error: any) {
     res.status(500).json({ error: 'Failed to fetch sources' });
   }
 });
@@ -19,7 +20,7 @@ router.post('/sources', async (req, res) => {
   try {
     const source = await prisma.source.create({ data: req.body });
     res.json(source);
-  } catch (error) {
+  } catch (error: any) {
     res.status(500).json({ error: 'Failed to create source', details: error.message });
   }
 });
@@ -29,7 +30,7 @@ router.get('/keywords', async (req, res) => {
   try {
     const keywords = await prisma.keyword.findMany();
     res.json(keywords);
-  } catch (error) {
+  } catch (error: any) {
     res.status(500).json({ error: 'Failed to fetch keywords' });
   }
 });
@@ -39,7 +40,7 @@ router.post('/keywords', async (req, res) => {
   try {
     const keyword = await prisma.keyword.create({ data: req.body });
     res.json(keyword);
-  } catch (error) {
+  } catch (error: any) {
     res.status(500).json({ error: 'Failed to create keyword', details: error.message });
   }
 });
@@ -58,34 +59,41 @@ router.get('/news', async (req, res) => {
     }
     
     if (sourceType) {
-      where.source = { type: sourceType };
-    }
-    
-    if (keywords) {
-      const keywordArray = (keywords as string).split(',').map(k => k.trim());
-      where.keywords = {
-        some: {
-          text: {
-            in: keywordArray
-          }
-        }
+      // Получаем источники указанного типа
+      const sourcesOfType = await prisma.source.findMany({
+        where: { type: sourceType as string },
+        select: { id: true },
+      });
+      
+      where.sourceId = {
+        in: sourcesOfType.map((source) => source.id),
       };
     }
     
-    const news = await prisma.newsItem.findMany({
+    // Получаем все новости, соответствующие фильтрам даты и типа источника
+    let news = await prisma.newsItem.findMany({
       where,
       include: {
         source: true,
-        keywords: true
       },
       orderBy: {
         publishedAt: 'desc'
       }
     });
     
+    // Фильтруем по ключевым словам в тексте, если указаны
+    if (keywords) {
+      const keywordArray = (keywords as string).split(',').map(k => k.trim());
+      news = news.filter((item) => {
+        const fullText = `${item.title} ${item.summary} ${item.subject || ''} ${item.position || ''}`.toLowerCase();
+        return keywordArray.some((keyword) => fullText.includes(keyword.toLowerCase()));
+      });
+    }
+    
     res.json(news);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch news' });
+  } catch (error: any) {
+    console.error('Error fetching news:', error);
+    res.status(500).json({ error: 'Failed to fetch news', details: error.message });
   }
 });
 
@@ -103,7 +111,7 @@ router.post('/news', async (req, res) => {
       include: { keywords: true, source: true }
     });
     res.json(created);
-  } catch (error) {
+  } catch (error: any) {
     res.status(500).json({ error: 'Failed to create news', details: error.message });
   }
 });
@@ -113,8 +121,72 @@ router.get('/email-settings', async (req, res) => {
   try {
     const settings = await prisma.emailSettings.findFirst();
     res.json(settings || { email: '', isEnabled: false, summaryFrequency: 'DAILY' });
-  } catch (error) {
+  } catch (error: any) {
     res.status(500).json({ error: 'Failed to fetch email settings' });
+  }
+});
+
+// Загрузка новостей
+router.post('/news/fetch', async (req, res) => {
+  try {
+    const { sourceType, keywords } = req.body;
+    console.log('Fetch news request:', { sourceType, keywords });
+    
+    const result = await fetchAndProcessNews({
+      sourceType,
+      keywords
+    });
+    
+    console.log('Fetch result:', result);
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error fetching news:', error);
+    res.status(500).json({ error: 'Ошибка при загрузке новостей' });
+  }
+});
+
+// Отправка выбранных новостей на email
+router.post('/news/send-email', async (req, res) => {
+  try {
+    const { email, newsIds, subject, message } = req.body;
+    
+    if (!email || !newsIds || !Array.isArray(newsIds) || newsIds.length === 0) {
+      return res.status(400).json({ 
+        error: 'Необходимо указать email и массив ID новостей для отправки' 
+      });
+    }
+
+    const result = await sendSelectedNewsEmail({
+      email,
+      newsIds,
+      subject,
+      message
+    });
+
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error sending selected news email:', error);
+    res.status(500).json({ 
+      error: 'Ошибка при отправке email', 
+      details: error.message 
+    });
+  }
+});
+
+// Получение статуса обработки новостей
+router.get('/news/status/:taskId', async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    
+    // Простая реализация статуса - в реальном приложении здесь была бы проверка статуса задачи
+    // Пока возвращаем "completed" для всех задач
+    res.json({ status: 'completed' });
+  } catch (error: any) {
+    console.error('Error getting task status:', error);
+    res.status(500).json({ 
+      error: 'Ошибка при получении статуса задачи', 
+      details: error.message 
+    });
   }
 });
 

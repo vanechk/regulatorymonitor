@@ -29,7 +29,7 @@ export type QueryKeys = {
 
 export type MutationKeys = {
   fetchNews: {
-    variables: void;
+    variables: { sourceType?: string; keywords?: string[] };
     data: { taskId: string | null; message: string; status: string };
   };
   exportToExcel: {
