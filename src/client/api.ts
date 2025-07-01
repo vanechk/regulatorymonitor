@@ -17,7 +17,7 @@ export const KeywordSchema = z.object({
 export const NewsItemSchema = z.object({
   id: z.string(),
   title: z.string(),
-  content: z.string(),
+  content: z.string().optional().nullable(),
   summary: z.string(),
   sourceUrl: z.string(),
   sourceName: z.string(),
@@ -26,7 +26,7 @@ export const NewsItemSchema = z.object({
   taxType: z.string().nullable(),
   subject: z.string().nullable(),
   position: z.string().nullable(),
-  publishedAt: z.date()
+  publishedAt: z.coerce.date()
 });
 
 export const ReportSchema = z.object({
@@ -44,7 +44,6 @@ export const EmailSettingsSchema = z.object({
   email: z.string(),
   isEnabled: z.boolean(),
   summaryFrequency: z.enum(["DAILY", "WEEKLY", "MONTHLY"]),
-  lastSummaryDate: z.date().nullable()
 });
 
 // Типы на основе схем
@@ -137,13 +136,36 @@ export const apiClient = {
     if (keywords) params.append('keywords', keywords.join(','));
     if (sourceType) params.append('sourceType', sourceType);
 
-    const response = await fetch(`/api/news?${params.toString()}`);
+    let response;
+    try {
+      response = await fetch(`/api/news?${params.toString()}`);
+    } catch (err) {
+      throw new Error('Сервер недоступен');
+    }
+    if (!response.ok) {
+      throw new Error('Ошибка загрузки новостей');
+    }
     const data = await response.json();
     return z.array(NewsItemSchema).parse(data);
   },
 
-  fetchAndProcessNews: async (): Promise<{ taskId: string | null; message: string; status: string }> => {
-    const response = await fetch('/api/news/fetch', { method: 'POST' });
+  fetchAndProcessNews: async (params?: {
+    sourceType?: string;
+    keywords?: string[];
+  }): Promise<{ taskId: string | null; message: string; status: string }> => {
+    let response;
+    try {
+      response = await fetch('/api/news/fetch', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params || {})
+      });
+    } catch (err) {
+      throw new Error('Сервер недоступен');
+    }
+    if (!response.ok) {
+      throw new Error('Ошибка загрузки новостей');
+    }
     const data = await response.json();
     return data;
   },
@@ -171,7 +193,15 @@ export const apiClient = {
     if (dateTo) params.append('dateTo', dateTo);
     if (keywords) params.append('keywords', keywords.join(','));
 
-    const response = await fetch(`/api/reports/export?${params.toString()}`);
+    let response;
+    try {
+      response = await fetch(`/api/reports/export?${params.toString()}`);
+    } catch (err) {
+      throw new Error('Сервер недоступен');
+    }
+    if (!response.ok) {
+      throw new Error('Ошибка экспорта');
+    }
     const data = await response.json();
     return data;
   },
@@ -205,5 +235,38 @@ export const apiClient = {
     });
     const data = await response.json();
     return data;
+  },
+
+  // Отправка выбранных новостей на email
+  sendSelectedNewsEmail: async ({
+    email,
+    newsIds,
+    subject,
+    message,
+  }: {
+    email: string;
+    newsIds: string[];
+    subject?: string;
+    message?: string;
+  }) => {
+    const response = await fetch('/api/news/send-email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email,
+        newsIds,
+        subject,
+        message,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Ошибка при отправке email');
+    }
+
+    return response.json();
   }
 };

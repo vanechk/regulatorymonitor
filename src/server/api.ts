@@ -7,6 +7,8 @@ import {
   type Report, 
   type EmailSettings 
 } from '../types/api';
+// import educationIcon from '../../../assets/education.png';
+import searchIcon from '../../../assets/search.png';
 
 const router = express.Router();
 
@@ -92,6 +94,8 @@ router.delete('/keywords/:id', async (req, res) => {
 router.get('/news', async (req, res) => {
   try {
     const { dateFrom, dateTo, keywords, sourceType } = req.query;
+    console.log('News query params:', { dateFrom, dateTo, keywords, sourceType });
+    
     const where: any = {};
     
     if (dateFrom || dateTo) {
@@ -105,14 +109,18 @@ router.get('/news', async (req, res) => {
     }
     
     if (keywords) {
-      const keywordArray = (keywords as string).split(',');
+      const keywordArray = (keywords as string).split(',').map(k => k.trim()).filter(k => k.length > 0);
+      if (keywordArray.length > 0) {
       where.OR = keywordArray.map((keyword: string) => ({
         OR: [
-          { title: { contains: keyword } },
-          { summary: { contains: keyword } }
+            { title: { contains: keyword, mode: 'insensitive' } },
+            { summary: { contains: keyword, mode: 'insensitive' } }
         ]
       }));
     }
+    }
+    
+    console.log('Where condition:', JSON.stringify(where, null, 2));
     
     const news = await db.newsItem.findMany({
       where,
@@ -120,9 +128,33 @@ router.get('/news', async (req, res) => {
       orderBy: { publishedAt: 'desc' }
     });
     
+    console.log(`Found ${news.length} news items`);
     res.json(news);
   } catch (error) {
+    console.error('Error fetching news:', error);
     res.status(500).json({ error: 'Ошибка при получении новостей' });
+  }
+});
+
+// Загрузка новостей
+router.post('/news/fetch', async (req, res) => {
+  try {
+    const { sourceType, keywords } = req.body;
+    console.log('Fetch news request:', { sourceType, keywords });
+    
+    // Импортируем функцию из основного API файла
+    const { fetchAndProcessNews } = await import('../../api');
+    
+    const result = await fetchAndProcessNews({
+      sourceType,
+      keywords
+    });
+    
+    console.log('Fetch result:', result);
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching news:', error);
+    res.status(500).json({ error: 'Ошибка при загрузке новостей' });
   }
 });
 
@@ -162,4 +194,5 @@ router.post('/email-settings', async (req, res) => {
   }
 });
 
-export default router; 
+export { router as apiRouter };
+

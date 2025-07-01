@@ -249,9 +249,12 @@ function Settings() {
     deleteSourceMutation.mutate({ id });
   };
 
-  const websiteSources = sources.filter((source) => source.type === "website");
+  // Фильтрация источников без пустых name и url
+  const websiteSources = sources.filter(
+    (source) => source.type === "website" && source.name.trim() && source.url.trim()
+  );
   const telegramSources = sources.filter(
-    (source) => source.type === "telegram",
+    (source) => source.type === "telegram" && source.name.trim() && source.url.trim()
   );
 
   return (

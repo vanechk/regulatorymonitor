@@ -245,7 +245,10 @@ function Dashboard() {
 
   const handleFetchNews = () => {
     if (fetchNewsMutation.isPending) return;
-    fetchNewsMutation.mutate();
+    fetchNewsMutation.mutate({
+      sourceType,
+      keywords: filterKeywords ? filterKeywords.split(',').map(k => k.trim()) : undefined,
+    });
   };
 
   const handleExport = () => {
