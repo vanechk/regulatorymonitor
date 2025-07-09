@@ -2,13 +2,14 @@ export interface NewsItem {
   id: string;
   title: string;
   summary: string;
+  content?: string | null;
   sourceUrl: string;
   sourceName: string;
   publishedAt: string;
-  documentRef?: string;
-  taxType?: string;
-  subject?: string;
-  position?: string;
+  documentRef?: string | null;
+  taxType?: string | null;
+  subject?: string | null;
+  position?: string | null;
 }
 
 export interface Source {

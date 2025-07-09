@@ -13,24 +13,53 @@ import { Badge } from '../../components/ui/badge';
 import { Filter, ChevronRight, FileText, Mail, CheckSquare, Square } from 'lucide-react';
 import { EmailSender } from '../components/EmailSender';
 import { Alert } from '../../components/ui/alert';
-import vtbLogo from '../../../assets/vtb-logo.svg';
-import { ReactComponent as VtbLogo } from '../../../assets/vtb-logo.svg';
+// @ts-ignore
+// import scientistBulb from '../../..//scientist-bulb.png';
+import { NewsItem as NewsItemType } from '../../types/api';
 
-declare module '*.svg' {
-  const value: string;
-  export default value;
+// Категоризация новостей с типами
+function categorizeNews(newsItems: NewsItemType[]): Record<string, NewsItemType[]> {
+  const categories: Record<string, NewsItemType[]> = {
+    npa: [],
+    minfin: [],
+    fns: [],
+    media: [],
+    telegram: [],
+    court: [],
+    other: []
+  };
+  newsItems.forEach((item: NewsItemType) => {
+    const sourceType = (item as any).source?.type || '';
+    const sourceName = ((item as any).source?.name || item.sourceName || '').toLowerCase();
+    const doc = (item.documentRef || '').toLowerCase();
+    const subj = (item.subject || '').toLowerCase();
+    if (/постановление|закон|приказ|указание|федеральный закон|нпа/.test(doc) || /постановление|закон|приказ|указание|федеральный закон|нпа/.test(subj)) {
+      categories.npa.push(item);
+    } else if (sourceName.includes('минфин') || doc.includes('минфин') || subj.includes('минфин')) {
+      categories.minfin.push(item);
+    } else if (sourceName.includes('фнс') || doc.includes('фнс') || subj.includes('фнс')) {
+      categories.fns.push(item);
+    } else if (sourceType === 'telegram') {
+      categories.telegram.push(item);
+    } else if (/суд|арбитраж|решение суда/.test(sourceName) || /суд|арбитраж|решение суда/.test(doc) || /суд|арбитраж|решение суда/.test(subj)) {
+      categories.court.push(item);
+    } else if (sourceType === 'website' && (/ведомости|рбк|тасс|интерфакс|коммерсант|форбс|газета/.test(sourceName))) {
+      categories.media.push(item);
+    } else {
+      categories.other.push(item);
+    }
+  });
+  return categories;
 }
-declare module '*.png' {
-  const value: string;
-  export default value;
-}
-declare module '*.jpg' {
-  const value: string;
-  export default value;
-}
-declare module '*.jpeg' {
-  const value: string;
-  export default value;
+
+function extractLawStatus(text: string): { status: string, color: string } | null {
+  const lower = text.toLowerCase();
+  if (!lower.includes('законопроект')) return null;
+  if (lower.includes('принят')) return { status: 'Принят', color: 'green' };
+  if (lower.includes('отклонён') || lower.includes('отклонен')) return { status: 'Отклонён', color: 'red' };
+  if (lower.includes('на рассмотрении')) return { status: 'На рассмотрении', color: 'yellow' };
+  if (lower.includes('внесён') || lower.includes('внесен')) return { status: 'Внесён', color: 'yellow' };
+  return null;
 }
 
 export default function Dashboard() {
@@ -43,9 +72,12 @@ export default function Dashboard() {
   const [selectedNewsIds, setSelectedNewsIds] = useState<string[]>([]);
   const [showEmailSender, setShowEmailSender] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [weekChecked, setWeekChecked] = useState(false);
+  const [monthChecked, setMonthChecked] = useState(false);
+  const [dateRange, setDateRange] = useState<'today' | 'week' | 'month' | 'custom'>('week');
 
   // Fetch news
-  const { data: newsItems = [], isLoading: isLoadingNews } = useQuery<NewsItem[]>({
+  const { data: newsItems = [], isLoading: isLoadingNews } = useQuery<NewsItemType[]>({
     queryKey: ['news', { dateFrom, dateTo, filterKeywords, sourceType }],
     queryFn: async () => {
       try {
@@ -225,6 +257,68 @@ export default function Dashboard() {
     setSelectedNewsIds([]);
   };
 
+  const handleSendTelegramDay = () => {
+    toast({
+      title: 'Отправка в Telegram',
+      description: 'Будет отправлен перечень новостей за день в Telegram-канал',
+      variant: 'default',
+    });
+  };
+  const handleSendTelegramWeek = () => {
+    toast({
+      title: 'Отправка в Telegram',
+      description: 'Будет отправлен перечень новостей за неделю в Telegram-канал',
+      variant: 'default',
+    });
+  };
+
+  const categorized = categorizeNews(newsItems);
+
+  function handleWeekCheckbox() {
+    if (!weekChecked) {
+      const now = new Date();
+      const weekAgo = new Date();
+      weekAgo.setDate(now.getDate() - 7);
+      setDateFrom(weekAgo);
+      setDateTo(now);
+      setWeekChecked(true);
+      setMonthChecked(false);
+    } else {
+      setDateFrom(undefined);
+      setDateTo(undefined);
+      setWeekChecked(false);
+    }
+  }
+
+  function handleMonthCheckbox() {
+    if (!monthChecked) {
+      const now = new Date();
+      const monthAgo = new Date();
+      monthAgo.setDate(now.getDate() - 30);
+      setDateFrom(monthAgo);
+      setDateTo(now);
+      setMonthChecked(true);
+      setWeekChecked(false);
+    } else {
+      setDateFrom(undefined);
+      setDateTo(undefined);
+      setMonthChecked(false);
+    }
+  }
+
+  const handleDateRange = (range: 'today' | 'week' | 'month') => {
+    if (range === 'today') {
+      const today = new Date();
+      setDateFrom(today);
+      setDateTo(today);
+    } else if (range === 'week') {
+      handleWeekCheckbox();
+    } else if (range === 'month') {
+      handleMonthCheckbox();
+    }
+    setDateRange(range);
+  };
+
   return (
     <div
       style={{
@@ -237,7 +331,7 @@ export default function Dashboard() {
       }}
     >
       {/* watermark логотип, если нужен */}
-      <img
+      {/* <img
         src={vtbLogo}
         alt="ВТБ"
         style={{
@@ -252,7 +346,7 @@ export default function Dashboard() {
           pointerEvents: 'none',
           zIndex: 1,
         }}
-      />
+      /> */}
       {/* Контентная карточка */}
       <div
         style={{
@@ -269,45 +363,101 @@ export default function Dashboard() {
           backdropFilter: 'blur(2px)',
         }}
       >
-        <header className="flex items-center mb-8">
-          <div className="h-12 w-12 rounded-full bg-white flex items-center justify-center mr-4 shadow-lg">
-            <img src={vtbLogo} alt="ВТБ" style={{ width: '100%', height: '100%' }} />
+        <header className="flex flex-col items-start mb-8">
+          <h1
+            className="text-3xl font-bold"
+            style={{
+              color: '#2e9bfe',
+              textTransform: 'uppercase',
+              WebkitTextStroke: '2px #2e9bfe',
+              letterSpacing: 2,
+              fontSize: 36,
+              lineHeight: 1.1,
+              fontFamily: 'Arial, sans-serif'
+            }}
+          >
+            Мониторинг законодательства
+          </h1>
+          <div style={{ marginTop: 8 }}>
+            <div
+              style={{
+                fontSize: 22,
+                fontWeight: 700,
+                color: '#2e9bfe',
+                textTransform: 'uppercase',
+                WebkitTextStroke: '1.5px #2e9bfe',
+                letterSpacing: 2,
+                fontFamily: 'Arial, sans-serif',
+                lineHeight: 1.1
+              }}
+            >
+              Налоговый блок
+            </div>
+            <div style={{ display: 'flex', gap: 12, marginTop: 4, flexDirection: 'column', alignItems: 'flex-start' }}>
+              <span style={{ fontSize: 20, fontWeight: 500, color: '#2e9bfe' }}>ДУиО</span>
+              <span
+                style={{
+                  fontSize: 16,
+                  fontWeight: 700,
+                  color: '#0000cc',
+                  textTransform: 'uppercase',
+                  letterSpacing: 1,
+                  fontFamily: 'Arial, sans-serif',
+                  lineHeight: 1.1,
+                  marginTop: 16
+                }}
+              >
+                Банк ВТБ (ПАО)
+              </span>
+            </div>
           </div>
-          <h1 className="text-3xl font-bold text-white">ВТБ | Мониторинг налогового законодательства</h1>
         </header>
         <div className="space-y-6">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-white">Главная</h1>
-              <p className="text-muted-foreground text-white">
-                Система мониторинга налогового законодательства и документов
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                onClick={handleFetchNews}
-                disabled={fetchNewsMutation.isPending || !!processingTaskId}
-              >
-                {fetchNewsMutation.isPending ? "Загрузка..." : "Обновить новости"}
-              </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleFetchNews}
+              disabled={fetchNewsMutation.isPending || !!processingTaskId}
+              style={{ color: '#fff', borderColor: '#1565c0', background: '#1565c0' }}
+            >
+              {fetchNewsMutation.isPending ? "Загрузка..." : "Обновить новости"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleExport}
+              disabled={exportMutation.isPending}
+              style={{ color: '#0000cc', borderColor: '#0000cc', background: '#fff' }}
+            >
+              {exportMutation.isPending ? "Экспорт..." : "Выгрузить в Excel"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleSendTelegramDay}
+              className="flex items-center gap-2"
+              style={{ color: '#0000cc', borderColor: '#0000cc', background: '#fff' }}
+            >
+              <Mail className="h-4 w-4" />
+              Отправить в Telegram (день)
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleSendTelegramWeek}
+              className="flex items-center gap-2"
+              style={{ color: '#0000cc', borderColor: '#0000cc', background: '#fff' }}
+            >
+              <Mail className="h-4 w-4" />
+              Отправить в Telegram (неделя)
+            </Button>
+            {selectedNewsIds.length > 0 && (
               <Button
                 variant="outline"
-                onClick={handleExport}
-                disabled={exportMutation.isPending}
+                onClick={handleSendEmail}
+                className="flex items-center gap-2"
+                style={{ color: '#0000cc', borderColor: '#0000cc', background: '#fff' }}
               >
-                {exportMutation.isPending ? "Экспорт..." : "Выгрузить в Excel"}
+                <Mail className="h-4 w-4" />
+                Отправить выбранное ({selectedNewsIds.length})
               </Button>
-              {selectedNewsIds.length > 0 && (
-                <Button
-                  variant="outline"
-                  onClick={handleSendEmail}
-                  className="flex items-center gap-2"
-                >
-                  <Mail className="h-4 w-4" />
-                  Отправить выбранное ({selectedNewsIds.length})
-                </Button>
-              )}
-            </div>
+            )}
           </div>
 
           {apiError && (
@@ -321,7 +471,7 @@ export default function Dashboard() {
           {/* Filters */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg flex items-center text-white">
+              <CardTitle className="text-lg flex items-center" style={{ color: '#2e9bfe' }}>
                 <Filter className="mr-2 h-4 w-4" />
                 Параметры поиска
               </CardTitle>
@@ -330,15 +480,30 @@ export default function Dashboard() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="dateRange" className="text-white">Период публикации</Label>
-                    <FilterCalendar
-                      selectedDateFrom={dateFrom}
-                      selectedDateTo={dateTo}
-                      onDateFromSelect={setDateFrom}
-                      onDateToSelect={setDateTo}
-                      onRangeSelect={handleDateRangeSelect}
-                      className="w-full mt-1"
-                    />
+                    <Label htmlFor="dateRange" className="text-white" style={{ color: '#2e9bfe' }}>Период публикации</Label>
+                    <div style={{ background: '#e3f2fd', borderRadius: 8, padding: '12px 16px', marginTop: 8 }}>
+                      <div style={{ display: 'flex', gap: '2rem' }}>
+                        <label style={{ color: '#2e9bfe', cursor: 'pointer' }}>
+                          <input type="checkbox" checked={dateRange === 'today'} onChange={() => handleDateRange('today')} /> За сегодня
+                        </label>
+                        <label style={{ color: '#2e9bfe', cursor: 'pointer' }}>
+                          <input type="checkbox" checked={dateRange === 'week'} onChange={() => handleDateRange('week')} /> За неделю
+                        </label>
+                        <label style={{ color: '#2e9bfe', cursor: 'pointer' }}>
+                          <input type="checkbox" checked={dateRange === 'month'} onChange={() => handleDateRange('month')} /> За месяц
+                        </label>
+                      </div>
+                      <div style={{ marginTop: 12 }}>
+                        <FilterCalendar
+                          selectedDateFrom={dateFrom}
+                          selectedDateTo={dateTo}
+                          onDateFromSelect={(date) => { setDateFrom(date); setDateRange('custom'); }}
+                          onDateToSelect={(date) => { setDateTo(date); setDateRange('custom'); }}
+                          onRangeSelect={(from, to) => { setDateFrom(from); setDateTo(to); setDateRange('custom'); }}
+                          className="w-full mt-1"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -352,6 +517,7 @@ export default function Dashboard() {
                         variant={sourceType === undefined ? "default" : "outline"}
                         size="sm"
                         onClick={() => setSourceType(undefined)}
+                        style={{ color: '#0000cc', borderColor: '#0000cc', background: '#fff' }}
                       >
                         Все источники
                       </Button>
@@ -359,6 +525,7 @@ export default function Dashboard() {
                         variant={sourceType === "website" ? "default" : "outline"}
                         size="sm"
                         onClick={() => setSourceType("website")}
+                        style={{ color: '#0000cc', borderColor: '#0000cc', background: '#fff' }}
                       >
                         Официальные сайты
                       </Button>
@@ -366,6 +533,7 @@ export default function Dashboard() {
                         variant={sourceType === "telegram" ? "default" : "outline"}
                         size="sm"
                         onClick={() => setSourceType("telegram")}
+                        style={{ color: '#0000cc', borderColor: '#0000cc', background: '#fff' }}
                       >
                         Telegram-каналы
                       </Button>
@@ -432,93 +600,116 @@ export default function Dashboard() {
                   </div>
                 </div>
                 
-                <div className="space-y-4">
-                  {newsItems.map((item) => (
-                    <Card 
-                      key={item.id} 
-                      className={`transition-colors bg-white/10 backdrop-blur-lg ${
-                        selectedNewsIds.includes(item.id) ? 'ring-2 ring-blue-400 bg-blue-900/20' : ''
-                      }`}
-                    >
-                      <CardHeader className="pb-3">
-                        <div className="flex justify-between items-start gap-3">
-                          <div className="flex items-start gap-3 flex-1">
-                            <button
-                              onClick={() => handleSelectNews(item.id)}
-                              className="mt-1 flex-shrink-0"
+                <div className="space-y-8">
+                  {Object.entries({
+                    'Нормативно-правовые акты': categorized.npa,
+                    'Письма Минфина': categorized.minfin,
+                    'Письма ФНС': categorized.fns,
+                    'СМИ': categorized.media,
+                    'Telegram': categorized.telegram,
+                    'Суды': categorized.court,
+                    'Другое': categorized.other
+                  } as Record<string, NewsItemType[]>).map(([cat, items]) =>
+                    items.length > 0 && (
+                      <div key={cat}>
+                        <h3 className="text-2xl font-bold text-blue-900 mb-4">{cat}</h3>
+                        <div className="space-y-4">
+                          {items.map((item: NewsItemType) => (
+                            <Card 
+                              key={item.id} 
+                              className={`transition-colors bg-white/10 backdrop-blur-lg ${
+                                selectedNewsIds.includes(item.id) ? 'ring-2 ring-blue-400 bg-blue-900/20' : ''
+                              }`}
                             >
-                              {selectedNewsIds.includes(item.id) ? (
-                                <CheckSquare className="h-5 w-5 text-blue-400" />
-                              ) : (
-                                <Square className="h-5 w-5 text-gray-400 hover:text-white" />
-                              )}
-                            </button>
-                            <div className="flex-1">
-                              <CardTitle className="text-lg">
-                                <a
-                                  href={item.sourceUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  style={{ color: '#1a237e', fontWeight: 600 }}
-                                >
-                                  {item.title}
-                                </a>
-                              </CardTitle>
-                              <CardDescription className="mt-1" style={{ color: '#444' }}>
-                                {new Date(item.publishedAt).toLocaleString('ru-RU', {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </CardDescription>
-                            </div>
-                          </div>
+                              <CardHeader className="pb-3">
+                                <div className="flex justify-between items-start gap-3">
+                                  <div className="flex items-start gap-3 flex-1">
+                                    <button
+                                      onClick={() => handleSelectNews(item.id)}
+                                      className="mt-1 flex-shrink-0"
+                                    >
+                                      {selectedNewsIds.includes(item.id) ? (
+                                        <CheckSquare className="h-5 w-5 text-blue-400" />
+                                      ) : (
+                                        <Square className="h-5 w-5 text-gray-400 hover:text-white" />
+                                      )}
+                                    </button>
+                                    <div className="flex-1">
+                                      <CardTitle className="text-lg" style={{ fontSize: 12, fontWeight: 600, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'unset' }}>
+                                        <a
+                                          href={item.sourceUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          style={{ color: '#1a237e', fontWeight: 600, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'unset', display: 'inline' }}
+                                        >
+                                          {item.title}
+                                        </a>
+                                      </CardTitle>
+                                    </div>
+                                  </div>
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="space-y-3">
+                                  <p style={{ color: '#2e9bfe', fontSize: 11 }}>
+                                    {item.summary}
+                                  </p>
+                                  {item.content && (
+                                    <div style={{ color: '#2e9bfe', fontSize: 14, marginTop: 6, whiteSpace: 'pre-line' }}>
+                                      {item.content}
+                                    </div>
+                                  )}
+                                  {(item.taxType || item.position || item.documentRef) && (
+                                    <div className="grid gap-2 text-sm text-white/70">
+                                      {item.taxType && (
+                                        <div>
+                                          <span className="font-medium">Тип налога:</span> {item.taxType}
+                                        </div>
+                                      )}
+                                      {item.position && (
+                                        <div>
+                                          <span className="font-medium">Позиция:</span> {item.position}
+                                        </div>
+                                      )}
+                                      {item.documentRef && (
+                                        <div>
+                                          <span className="font-medium">Документ:</span> {item.documentRef}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                  <div
+                                    style={{
+                                      marginTop: 12,
+                                      color: '#2e9bfe',
+                                      fontStyle: 'italic',
+                                      fontWeight: 400,
+                                      fontSize: 15,
+                                    }}
+                                  >
+                                    #{item.sourceName}{item.taxType ? `, ${item.taxType}` : ''}
+                                  </div>
+                                  {item.title.toLowerCase().includes('законопроект') && (
+                                    <div>
+                                      <span className="font-medium">Статус законопроекта:</span> {extractLawStatus(item.title + ' ' + (item.summary || ''))?.status}
+                                    </div>
+                                  )}
+                                  {(['Госдума', 'Нормативно-правовые акты'].includes(cat)) && (() => {
+                                    const statusObj = extractLawStatus(item.title + ' ' + (item.summary || ''));
+                                    return statusObj ? (
+                                      <Badge style={{ backgroundColor: statusObj.color === 'green' ? '#4caf50' : statusObj.color === 'red' ? '#f44336' : '#ffeb3b', color: statusObj.color === 'yellow' ? '#333' : '#fff', marginBottom: 8 }}>
+                                        {statusObj.status}
+                                      </Badge>
+                                    ) : null;
+                                  })()}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
                         </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
-                          <p style={{ color: '#1a237e' }}>{item.summary}</p>
-                          {(item.taxType || item.subject || item.position || item.documentRef) && (
-                            <div className="grid gap-2 text-sm text-white/70">
-                              {item.taxType && (
-                                <div>
-                                  <span className="font-medium">Тип налога:</span> {item.taxType}
-                                </div>
-                              )}
-                              {item.subject && (
-                                <div>
-                                  <span className="font-medium">Тема:</span> {item.subject}
-                                </div>
-                              )}
-                              {item.position && (
-                                <div>
-                                  <span className="font-medium">Позиция:</span> {item.position}
-                                </div>
-                              )}
-                              {item.documentRef && (
-                                <div>
-                                  <span className="font-medium">Документ:</span> {item.documentRef}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          <div
-                            style={{
-                              marginTop: 12,
-                              color: '#111',
-                              fontStyle: 'italic',
-                              fontWeight: 400,
-                              fontSize: 15,
-                            }}
-                          >
-                            #{item.sourceName}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                      </div>
+                    )
+                  )}
                 </div>
               </>
             )}
