@@ -26,7 +26,7 @@ export const NewsItemSchema = z.object({
   taxType: z.string().nullable(),
   subject: z.string().nullable(),
   position: z.string().nullable(),
-  publishedAt: z.coerce.date()
+  publishedAt: z.string(),
 });
 
 export const ReportSchema = z.object({

@@ -430,7 +430,7 @@ function Dashboard() {
               <Card key={item.id}>
                 <CardHeader>
                   <div className="flex justify-between items-start">
-                    <CardTitle>{item.title}</CardTitle>
+                    <CardTitle style={{ fontSize: 12, fontWeight: 600, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'unset' }}>{item.title}</CardTitle>
                     <Badge variant="outline">
                       {new Date(item.publishedAt).toLocaleDateString("ru-RU")}
                     </Badge>
@@ -442,7 +442,7 @@ function Dashboard() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm">{item.summary}</p>
+                  <p className="text-sm" style={{ fontSize: 11 }}>{item.summary}</p>
                   {item.subject && (
                     <div className="mt-2">
                       <span className="text-sm font-medium">

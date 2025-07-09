@@ -7,8 +7,8 @@ import {
   type Report, 
   type EmailSettings 
 } from '../types/api';
-// import educationIcon from '../../../assets/education.png';
-import searchIcon from '../../../assets/search.png';
+// import educationIcon from '../../..//education.png';
+// import searchIcon from '../../..//search.png';
 
 const router = express.Router();
 

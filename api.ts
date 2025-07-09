@@ -4,7 +4,7 @@ import { queueTask, getTaskStatus, sendEmail, upload, requestMultimodalModel as 
 import { getParserForSource } from './src/parsers';
 import { z } from 'zod';
 import * as ExcelJS from "exceljs";
-// import VTBLogo from '../../assets/vtb-logo.svg'; // This will be used in UI components, not here.
+// import VTBLogo from '../..//vtb-logo.svg'; // This will be used in UI components, not here.
 
 // Source management
 export async function listSources() {
