@@ -22,6 +22,7 @@ function Settings() {
   const [sourceGroups, setSourceGroups] = useState<
     Array<{ id: string; name: string; sources: Source[] }>
   >([]);
+  const [telegramChannel, setTelegramChannel] = useState(() => localStorage.getItem('telegramChannel') || '');
 
   // Fetch sources
   const { data: sources = [], isLoading: isLoadingSources } = useQuery<Source[]>({
@@ -256,6 +257,11 @@ function Settings() {
   const telegramSources = sources.filter(
     (source) => source.type === "telegram" && source.name.trim() && source.url.trim()
   );
+
+  const handleSaveTelegramChannel = () => {
+    localStorage.setItem('telegramChannel', telegramChannel);
+    toast({ title: 'Адрес Telegram-канала сохранён' });
+  };
 
   return (
     <div className="space-y-6">
@@ -732,6 +738,19 @@ function Settings() {
                       <SelectItem value="MONTHLY">Ежемесячно</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="telegramChannel">Telegram-канал</Label>
+                  <Input
+                    id="telegramChannel"
+                    type="text"
+                    value={telegramChannel}
+                    onChange={e => setTelegramChannel(e.target.value)}
+                    placeholder="@your_channel или ссылка"
+                    className="w-full mt-1"
+                  />
+                  <Button type="button" onClick={handleSaveTelegramChannel} style={{ marginTop: 8 }}>Сохранить Telegram-канал</Button>
                 </div>
 
                 <div className="flex gap-2">

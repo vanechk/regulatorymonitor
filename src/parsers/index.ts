@@ -90,8 +90,7 @@ export async function parseUniversal(url: string, keywords: string[], sourceName
         
         if (title && summary) {
           const fullUrl = link ? new URL(link, url).href : url;
-          const publishedDate = parseRussianDate(dateText) || new Date().toISOString();
-          
+          const publishedDate = parseRussianDate(dateText) || 'NO_DATE';
           articles.push({
             title,
             summary: summary.length > 500 ? summary.substring(0, 497) + '...' : summary,

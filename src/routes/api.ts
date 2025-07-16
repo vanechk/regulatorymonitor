@@ -190,4 +190,21 @@ router.get('/news/status/:taskId', async (req, res) => {
   }
 });
 
+// Отправка отчёта в Telegram
+router.post('/telegram/report', async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text || typeof text !== 'string') {
+      return res.status(400).json({ error: 'Не передан текст отчёта' });
+    }
+    // Здесь должна быть интеграция с Telegram Bot API
+    console.log('Отправка отчёта в Telegram:', text);
+    // TODO: отправить text через Telegram Bot API
+    res.json({ ok: true, message: 'Отчёт отправлен (заглушка)' });
+  } catch (error: any) {
+    console.error('Ошибка при отправке в Telegram:', error);
+    res.status(500).json({ error: 'Ошибка при отправке в Telegram', details: error.message });
+  }
+});
+
 export { router as apiRouter }; 

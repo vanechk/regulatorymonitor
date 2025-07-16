@@ -25,54 +25,42 @@ export async function parseMinfin(url: string, keywords: string[]): Promise<Pars
     const $ = cheerio.load(response.data);
     const articles: ParsedArticle[] = [];
     
-    // Новый селектор для новостей Минфина
-    $('.news__item').each((index, element) => {
-      const $el = $(element);
-      const title = $el.find('.news__title').text().trim();
-      const summary = $el.find('.news__text').text().trim();
-      const link = $el.find('.news__title').attr('href');
-      const dateText = $el.find('.news__date').text().trim();
-      const parsedDate = parseRussianDate(dateText);
-      if (!parsedDate) return;
-      const [day, month, year] = parsedDate.split('.');
-      const publishedAt = new Date(`${year}-${month}-${day}T00:00:00Z`);
-      if (title && summary) {
-        const fullUrl = link ? new URL(link, url).href : url;
-        articles.push({
-          title,
-          summary: summary.length > 500 ? summary.substring(0, 500) + '...' : summary,
-          publishedDate: publishedAt.toISOString(),
-          url: fullUrl,
-          subject: 'Новости Минфина РФ',
-          position: 'Официальная информация Министерства финансов'
-        });
-      }
-    });
-    
-    // Если не нашли новости, пробуем альтернативные селекторы
-    if (articles.length === 0) {
-      $('.news-item, .article-item, .content-item').each((index, element) => {
+    const selectors = [
+      '.news__item',
+      '.news-item, .article-item, .content-item',
+      'article, .article-wrapper, .news-wrapper',
+      'div, p'
+    ];
+    for (const selector of selectors) {
+      $(selector).each((index, element) => {
         const $el = $(element);
-        const title = $el.find('.title, h1, h2, h3, .news-title').first().text().trim();
-        const summary = $el.find('.summary, .description, .text, p').first().text().trim();
-        const link = $el.find('a').first().attr('href');
-        const dateText = $el.find('.date, .time, .published').first().text().trim();
+        const title = $el.find('.news__title, .title, h1, h2, h3, .news-title').first().text().trim();
+        const summary = $el.find('.news__text, .summary, .description, .text, p').first().text().trim();
+        const link = $el.find('.news__title, a').first().attr('href');
+        const dateText = $el.find('.news__date, .date, .time, .published').first().text().trim();
+        let publishedDate = 'NO_DATE';
         const parsedDate = parseRussianDate(dateText);
-        if (!parsedDate) return;
-        const [day, month, year] = parsedDate.split('.');
-        const publishedAt = new Date(`${year}-${month}-${day}T00:00:00Z`);
+        if (parsedDate) {
+          const [day, month, year] = parsedDate.split('.');
+          publishedDate = new Date(`${year}-${month}-${day}T00:00:00Z`).toISOString();
+        }
         if (title && summary) {
           const fullUrl = link ? new URL(link, url).href : url;
-          articles.push({
-            title,
-            summary: summary.length > 500 ? summary.substring(0, 500) + '...' : summary,
-            publishedDate: publishedAt.toISOString(),
-            url: fullUrl,
-            subject: 'Новости Минфина РФ',
-            position: 'Официальная информация Министерства финансов'
-          });
+          const textLower = (title + ' ' + summary).toLowerCase();
+          const hasKeyword = keywords.length === 0 || keywords.some(keyword => textLower.includes(keyword.toLowerCase()));
+          if (hasKeyword) {
+            articles.push({
+              title,
+              summary: summary.length > 500 ? summary.substring(0, 500) + '...' : summary,
+              publishedDate,
+              url: fullUrl,
+              subject: 'Новости Минфина РФ',
+              position: 'Официальная информация Министерства финансов'
+            });
+          }
         }
       });
+      if (articles.length > 0) break;
     }
     
     console.log(`Found ${articles.length} articles from Minfin`);
