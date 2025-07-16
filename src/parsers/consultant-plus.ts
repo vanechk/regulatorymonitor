@@ -49,15 +49,17 @@ export async function parseConsultantPlus(url: string, keywords: string[]): Prom
         const link = $el.find('a').first().attr('href');
         const dateText = $el.find('.news-date, .date, .published, .article-date, .timestamp').first().text().trim();
         const parsedDate = parseRussianDate(dateText);
-        if (!parsedDate) return;
-        const [day, month, year] = parsedDate.split('.');
-        const publishedAt = new Date(`${year}-${month}-${day}T00:00:00Z`);
+        let publishedDate = 'NO_DATE';
+        if (parsedDate) {
+          const [day, month, year] = parsedDate.split('.');
+          publishedDate = new Date(`${year}-${month}-${day}T00:00:00Z`).toISOString();
+        }
         if (title && summary) {
           const fullUrl = link ? new URL(link, url).href : url;
           articles.push({
             title,
             summary: summary.length > 500 ? summary.substring(0, 500) + '...' : summary,
-            publishedDate: publishedAt.toISOString(),
+            publishedDate,
             url: fullUrl,
             subject: 'Новости КонсультантПлюс',
             position: 'Аналитическая информация от КонсультантПлюс'

@@ -93,11 +93,18 @@ export async function parseVedomosti(url: string, keywords: string[]): Promise<P
           if (hasKeyword) {
             const title = text.split('\n')[0].substring(0, 100).trim();
             const summary = text.length > 200 ? text.substring(0, 200) + '...' : text;
-            
+            // Попытка найти дату в этом блоке
+            const dateText = $el.find('.date, .time, .published, .article-date, .timestamp').first().text().trim();
+            const parsedDate = parseRussianDate(dateText);
+            let publishedDate = 'NO_DATE';
+            if (parsedDate) {
+              const [day, month, year] = parsedDate.split('.');
+              publishedDate = new Date(`${year}-${month}-${day}T00:00:00Z`).toISOString();
+            }
             articles.push({
               title,
               summary,
-              publishedDate: new Date().toLocaleDateString('ru-RU'),
+              publishedDate,
               url: url,
               subject: 'Новости Ведомости',
               position: 'Деловая газета Ведомости'

@@ -58,6 +58,14 @@ export const apiClient = {
   // Источники
   listSources: async (): Promise<Source[]> => {
     const response = await fetch('/api/sources');
+    if (!response.ok) {
+      let errorText = 'Ошибка загрузки источников';
+      try {
+        const error = await response.json();
+        errorText = error.error || errorText;
+      } catch (e) {}
+      throw new Error(errorText);
+    }
     const data = await response.json();
     return z.array(SourceSchema).parse(data);
   },
@@ -68,6 +76,14 @@ export const apiClient = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ isEnabled })
     });
+    if (!response.ok) {
+      let errorText = 'Ошибка обновления источника';
+      try {
+        const error = await response.json();
+        errorText = error.error || errorText;
+      } catch (e) {}
+      throw new Error(errorText);
+    }
     const data = await response.json();
     return SourceSchema.parse(data);
   },
@@ -98,6 +114,14 @@ export const apiClient = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, url, type })
     });
+    if (!response.ok) {
+      let errorText = 'Ошибка добавления источника';
+      try {
+        const error = await response.json();
+        errorText = error.error || errorText;
+      } catch (e) {}
+      throw new Error(errorText);
+    }
     const data = await response.json();
     return SourceSchema.parse(data);
   },
@@ -105,6 +129,14 @@ export const apiClient = {
   // Ключевые слова
   listKeywords: async (): Promise<Keyword[]> => {
     const response = await fetch('/api/keywords');
+    if (!response.ok) {
+      let errorText = 'Ошибка загрузки ключевых слов';
+      try {
+        const error = await response.json();
+        errorText = error.error || errorText;
+      } catch (e) {}
+      throw new Error(errorText);
+    }
     const data = await response.json();
     return z.array(KeywordSchema).parse(data);
   },
@@ -115,6 +147,14 @@ export const apiClient = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text })
     });
+    if (!response.ok) {
+      let errorText = 'Ошибка добавления ключевого слова';
+      try {
+        const error = await response.json();
+        errorText = error.error || errorText;
+      } catch (e) {}
+      throw new Error(errorText);
+    }
     const data = await response.json();
     return KeywordSchema.parse(data);
   },
@@ -134,7 +174,9 @@ export const apiClient = {
     if (dateFrom) params.append('dateFrom', dateFrom);
     if (dateTo) params.append('dateTo', dateTo);
     if (keywords) params.append('keywords', keywords.join(','));
-    if (sourceType) params.append('sourceType', sourceType);
+    if (sourceType) {
+      params.append('sourceType', sourceType);
+    }
 
     let response;
     try {
@@ -143,7 +185,12 @@ export const apiClient = {
       throw new Error('Сервер недоступен');
     }
     if (!response.ok) {
-      throw new Error('Ошибка загрузки новостей');
+      let errorText = 'Ошибка загрузки новостей';
+      try {
+        const error = await response.json();
+        errorText = error.error || errorText;
+      } catch (e) {}
+      throw new Error(errorText);
     }
     const data = await response.json();
     return z.array(NewsItemSchema).parse(data);
@@ -200,7 +247,12 @@ export const apiClient = {
       throw new Error('Сервер недоступен');
     }
     if (!response.ok) {
-      throw new Error('Ошибка экспорта');
+      let errorText = 'Ошибка экспорта';
+      try {
+        const error = await response.json();
+        errorText = error.error || errorText;
+      } catch (e) {}
+      throw new Error(errorText);
     }
     const data = await response.json();
     return data;
@@ -223,6 +275,14 @@ export const apiClient = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, isEnabled, summaryFrequency })
     });
+    if (!response.ok) {
+      let errorText = 'Ошибка обновления настроек email';
+      try {
+        const error = await response.json();
+        errorText = error.error || errorText;
+      } catch (e) {}
+      throw new Error(errorText);
+    }
     const data = await response.json();
     return EmailSettingsSchema.parse(data);
   },
@@ -263,10 +323,32 @@ export const apiClient = {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Ошибка при отправке email');
+      let errorText = 'Ошибка при отправке email';
+      try {
+        const error = await response.json();
+        errorText = error.error || errorText;
+      } catch (e) {}
+      throw new Error(errorText);
     }
 
+    return response.json();
+  },
+
+  // Отправка отчёта в Telegram
+  sendTelegramReport: async ({ text }: { text: string }): Promise<{ ok: boolean; message: string }> => {
+    const response = await fetch('/api/telegram/report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    if (!response.ok) {
+      let errorText = 'Ошибка отправки в Telegram';
+      try {
+        const error = await response.json();
+        errorText = error.error || errorText;
+      } catch (e) {}
+      throw new Error(errorText);
+    }
     return response.json();
   }
 };

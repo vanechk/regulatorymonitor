@@ -102,12 +102,18 @@ export async function parseFNS(url: string, keywords: string[]): Promise<ParserR
           if (hasKeyword) {
             const title = text.split('\n')[0].substring(0, 100).trim();
             const summary = text.length > 200 ? text.substring(0, 200) + '...' : text;
-            const currentDate = new Date();
-            
+            // Попытка найти дату в этом блоке
+            const dateText = $el.find('.date, .time, .published, .article-date, .timestamp').first().text().trim();
+            const parsedDate = parseRussianDate(dateText);
+            let publishedDate = 'NO_DATE';
+            if (parsedDate) {
+              const [day, month, year] = parsedDate.split('.');
+              publishedDate = new Date(`${year}-${month}-${day}T00:00:00Z`).toISOString();
+            }
             articles.push({
               title,
               summary,
-              publishedDate: currentDate.toISOString(),
+              publishedDate,
               url: url,
               subject: 'Новости ФНС',
               position: 'Федеральная налоговая служба'

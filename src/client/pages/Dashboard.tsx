@@ -16,6 +16,8 @@ import { Alert } from '../../components/ui/alert';
 // @ts-ignore
 // import scientistBulb from '../../..//scientist-bulb.png';
 import { NewsItem as NewsItemType } from '../../types/api';
+import checkDocImg from '../../assets/check-doc.png';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui/dialog';
 
 // Категоризация новостей с типами
 function categorizeNews(newsItems: NewsItemType[]): Record<string, NewsItemType[]> {
@@ -75,6 +77,8 @@ export default function Dashboard() {
   const [weekChecked, setWeekChecked] = useState(false);
   const [monthChecked, setMonthChecked] = useState(false);
   const [dateRange, setDateRange] = useState<'today' | 'week' | 'month' | 'custom'>('week');
+  const [showTelegramPreview, setShowTelegramPreview] = useState(false);
+  const [telegramReportText, setTelegramReportText] = useState('');
 
   // Fetch news
   const { data: newsItems = [], isLoading: isLoadingNews } = useQuery<NewsItemType[]>({
@@ -138,10 +142,13 @@ export default function Dashboard() {
   }, [processingStatus, queryClient, toast]);
 
   // Fetch and process news mutation
-  const fetchNewsMutation = useMutation({
-    mutationFn: (params?: { sourceType?: string; keywords?: string[] }) => 
-      apiClient.fetchAndProcessNews(params),
-    onSuccess: (data: any) => {
+  const fetchNewsMutation = useMutation<
+    { taskId: string | null; message: string; status: string },
+    Error,
+    { sourceType?: string; keywords?: string[] }
+  >({
+    mutationFn: apiClient.fetchAndProcessNews,
+    onSuccess: (data) => {
       if (data.taskId) {
         setProcessingTaskId(String(data.taskId));
       }
@@ -149,9 +156,13 @@ export default function Dashboard() {
   });
 
   // Export mutation
-  const exportMutation = useMutation({
+  const exportMutation = useMutation<
+    { reportId: string; fileUrl: string; itemCount: number },
+    Error,
+    { dateFrom?: string; dateTo?: string; keywords?: string[] }
+  >({
     mutationFn: apiClient.exportToExcel,
-    onSuccess: (data: any) => {
+    onSuccess: (data) => {
       window.open(data.fileUrl, '_blank');
       toast({
         title: "Экспорт завершен",
@@ -162,7 +173,11 @@ export default function Dashboard() {
   });
 
   // Remove keyword mutation
-  const removeKeywordMutation = useMutation({
+  const removeKeywordMutation = useMutation<
+    void,
+    Error,
+    { id: string }
+  >({
     mutationFn: apiClient.removeKeyword,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['keywords'] });
@@ -170,7 +185,11 @@ export default function Dashboard() {
   });
 
   // Delete source mutation
-  const deleteSourceMutation = useMutation({
+  const deleteSourceMutation = useMutation<
+    void,
+    Error,
+    { id: string }
+  >({
     mutationFn: apiClient.deleteSource,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sources'] });
@@ -257,12 +276,64 @@ export default function Dashboard() {
     setSelectedNewsIds([]);
   };
 
-  const handleSendTelegramDay = () => {
-    toast({
-      title: 'Отправка в Telegram',
-      description: 'Будет отправлен перечень новостей за день в Telegram-канал',
-      variant: 'default',
+  // Генерация текста отчёта для Telegram
+  function generateTelegramReport(newsItems: NewsItemType[], dateFrom?: Date, dateTo?: Date): string {
+    if (!dateFrom || !dateTo) return '';
+    const formatDate = (date: Date) => date.toLocaleDateString('ru-RU');
+    const period = `${formatDate(dateFrom)} - ${formatDate(dateTo)}`;
+    let report = `Мониторинг законодательства - ${period}\n\n`;
+    newsItems.forEach(item => {
+      report += `- ${item.title}\n`;
     });
+    // Можно добавить ссылки, если они есть
+    // report += `\n📚 Подробнее: ...\n`;
+    // report += `📑 Скачать полный мониторинг: ...\n`;
+    return report;
+  }
+
+  // Мутация для отправки отчёта в Telegram
+  const sendTelegramMutation = useMutation<
+    { ok: boolean; message: string },
+    Error,
+    { text: string }
+  >({
+    mutationFn: ({ text }) => apiClient.sendTelegramReport({ text }),
+    onSuccess: () => {
+      toast({
+        title: 'Отправлено в Telegram',
+        description: 'Отчёт успешно отправлен в Telegram-канал',
+      });
+    },
+    onError: () => {
+      toast({
+        title: 'Ошибка отправки',
+        description: 'Не удалось отправить отчёт в Telegram',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Новый обработчик кнопки Telegram
+  const handleSendTelegramDay = () => {
+    if (!dateFrom || !dateTo) {
+      toast({
+        title: 'Не выбран период',
+        description: 'Пожалуйста, выберите период для отчёта',
+        variant: 'destructive',
+      });
+      return;
+    }
+    const reportText = generateTelegramReport(newsItems, dateFrom, dateTo);
+    if (!reportText.trim()) {
+      toast({
+        title: 'Нет новостей',
+        description: 'Нет новостей для отправки за выбранный период',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setTelegramReportText(reportText);
+    setShowTelegramPreview(true);
   };
   const handleSendTelegramWeek = () => {
     toast({
@@ -277,10 +348,20 @@ export default function Dashboard() {
   function handleWeekCheckbox() {
     if (!weekChecked) {
       const now = new Date();
-      const weekAgo = new Date();
-      weekAgo.setDate(now.getDate() - 7);
-      setDateFrom(weekAgo);
-      setDateTo(now);
+      // Определяем день недели (0 - воскресенье, 1 - понедельник, ...)
+      const dayOfWeek = now.getDay();
+      // Смещение до последнего воскресенья (конец прошлой недели)
+      const daysSinceLastSunday = dayOfWeek === 0 ? 7 : dayOfWeek;
+      // Конец прошлой недели (воскресенье)
+      const to = new Date(now);
+      to.setDate(now.getDate() - daysSinceLastSunday);
+      to.setHours(23, 59, 59, 999);
+      // Начало прошлой недели (понедельник)
+      const from = new Date(to);
+      from.setDate(to.getDate() - 6);
+      from.setHours(0, 0, 0, 0);
+      setDateFrom(from);
+      setDateTo(to);
       setWeekChecked(true);
       setMonthChecked(false);
     } else {
@@ -309,8 +390,12 @@ export default function Dashboard() {
   const handleDateRange = (range: 'today' | 'week' | 'month') => {
     if (range === 'today') {
       const today = new Date();
-      setDateFrom(today);
-      setDateTo(today);
+      const from = new Date(today);
+      from.setHours(0, 0, 0, 0);
+      const to = new Date(today);
+      to.setHours(23, 59, 59, 999);
+      setDateFrom(from);
+      setDateTo(to);
     } else if (range === 'week') {
       handleWeekCheckbox();
     } else if (range === 'month') {
@@ -358,26 +443,36 @@ export default function Dashboard() {
           background: 'rgba(255,255,255,0.85)',
           borderRadius: 24,
           boxShadow: '0 8px 32px rgba(26,35,126,0.18)',
-          padding: '48px 32px 32px 32px',
+          padding: '48px 70px 32px 70px', // увеличено слева и справа на 38px (1см)
           minHeight: 500,
           backdropFilter: 'blur(2px)',
         }}
       >
         <header className="flex flex-col items-start mb-8">
-          <h1
-            className="text-3xl font-bold"
-            style={{
-              color: '#2e9bfe',
-              textTransform: 'uppercase',
-              WebkitTextStroke: '2px #2e9bfe',
-              letterSpacing: 2,
-              fontSize: 36,
-              lineHeight: 1.1,
-              fontFamily: 'Arial, sans-serif'
-            }}
-          >
-            Мониторинг законодательства
-          </h1>
+          <div style={{ display: 'flex', alignItems: 'flex-start', width: '100%', justifyContent: 'space-between' }}>
+            <h1
+              className="text-3xl font-bold"
+              style={{
+                color: '#2e9bfe',
+                textTransform: 'uppercase',
+                WebkitTextStroke: '2px #2e9bfe',
+                letterSpacing: 2,
+                fontSize: 36,
+                lineHeight: 1.1,
+                fontFamily: 'Arial, sans-serif',
+                flex: '1 1 auto'
+              }}
+            >
+              Мониторинг законодательства
+            </h1>
+            <div style={{ position: 'relative', width: '100%' }}>
+              <img
+                src={checkDocImg}
+                alt="Документ с галочкой"
+                style={{ width: '6cm', height: '6cm', position: 'absolute', right: 32, top: 24 }}
+              />
+            </div>
+          </div>
           <div style={{ marginTop: 8 }}>
             <div
               style={{
@@ -409,17 +504,36 @@ export default function Dashboard() {
               >
                 Банк ВТБ (ПАО)
               </span>
+              <Button
+                onClick={handleFetchNews}
+                disabled={fetchNewsMutation.isPending || !!processingTaskId}
+                style={{ color: '#fff', borderColor: '#1565c0', background: '#1565c0', fontSize: 20, padding: '16px 32px', marginTop: 24 }}
+              >
+                {fetchNewsMutation.isPending ? "Загрузка..." : "Обновить новости"}
+              </Button>
             </div>
           </div>
         </header>
         <div className="space-y-6">
-          <div className="flex gap-2">
+          {/* Новый блок: кнопки email, telegram, excel */}
+          <div style={{ display: 'flex', flexDirection: 'row', gap: 16, alignItems: 'center', margin: '24px 0 16px 0' }}>
             <Button
-              onClick={handleFetchNews}
-              disabled={fetchNewsMutation.isPending || !!processingTaskId}
-              style={{ color: '#fff', borderColor: '#1565c0', background: '#1565c0' }}
+              variant="outline"
+              onClick={handleSendEmail}
+              className="flex items-center gap-2"
+              style={{ color: '#0000cc', borderColor: '#0000cc', background: '#fff' }}
             >
-              {fetchNewsMutation.isPending ? "Загрузка..." : "Обновить новости"}
+              <Mail className="h-4 w-4" />
+              Отправить на email
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleSendTelegramDay}
+              className="flex items-center gap-2"
+              style={{ color: '#0000cc', borderColor: '#0000cc', background: '#fff' }}
+            >
+              <Mail className="h-4 w-4" />
+              Отправить в Telegram
             </Button>
             <Button
               variant="outline"
@@ -429,35 +543,6 @@ export default function Dashboard() {
             >
               {exportMutation.isPending ? "Экспорт..." : "Выгрузить в Excel"}
             </Button>
-            <Button
-              variant="outline"
-              onClick={handleSendTelegramDay}
-              className="flex items-center gap-2"
-              style={{ color: '#0000cc', borderColor: '#0000cc', background: '#fff' }}
-            >
-              <Mail className="h-4 w-4" />
-              Отправить в Telegram (день)
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleSendTelegramWeek}
-              className="flex items-center gap-2"
-              style={{ color: '#0000cc', borderColor: '#0000cc', background: '#fff' }}
-            >
-              <Mail className="h-4 w-4" />
-              Отправить в Telegram (неделя)
-            </Button>
-            {selectedNewsIds.length > 0 && (
-              <Button
-                variant="outline"
-                onClick={handleSendEmail}
-                className="flex items-center gap-2"
-                style={{ color: '#0000cc', borderColor: '#0000cc', background: '#fff' }}
-              >
-                <Mail className="h-4 w-4" />
-                Отправить выбранное ({selectedNewsIds.length})
-              </Button>
-            )}
           </div>
 
           {apiError && (
@@ -484,13 +569,28 @@ export default function Dashboard() {
                     <div style={{ background: '#e3f2fd', borderRadius: 8, padding: '12px 16px', marginTop: 8 }}>
                       <div style={{ display: 'flex', gap: '2rem' }}>
                         <label style={{ color: '#2e9bfe', cursor: 'pointer' }}>
-                          <input type="checkbox" checked={dateRange === 'today'} onChange={() => handleDateRange('today')} /> За сегодня
+                          <input
+                            type="radio"
+                            name="dateRange"
+                            checked={dateRange === 'today'}
+                            onChange={() => handleDateRange('today')}
+                          /> За сегодня
                         </label>
                         <label style={{ color: '#2e9bfe', cursor: 'pointer' }}>
-                          <input type="checkbox" checked={dateRange === 'week'} onChange={() => handleDateRange('week')} /> За неделю
+                          <input
+                            type="radio"
+                            name="dateRange"
+                            checked={dateRange === 'week'}
+                            onChange={() => handleDateRange('week')}
+                          /> За неделю
                         </label>
                         <label style={{ color: '#2e9bfe', cursor: 'pointer' }}>
-                          <input type="checkbox" checked={dateRange === 'month'} onChange={() => handleDateRange('month')} /> За месяц
+                          <input
+                            type="radio"
+                            name="dateRange"
+                            checked={dateRange === 'month'}
+                            onChange={() => handleDateRange('month')}
+                          /> За месяц
                         </label>
                       </div>
                       <div style={{ marginTop: 12 }}>
@@ -588,7 +688,8 @@ export default function Dashboard() {
                       variant="outline"
                       size="sm"
                       onClick={handleSelectAllNews}
-                      className="flex items-center gap-2 bg-white/10 backdrop-blur-lg text-white hover:bg-white/20"
+                      className="flex items-center gap-2"
+                      style={{ background: '#1565c0', color: '#fff', borderColor: '#1565c0' }}
                     >
                       {selectedNewsIds.length === newsItems.length ? (
                         <CheckSquare className="h-4 w-4" />
@@ -725,6 +826,26 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+      <Dialog open={showTelegramPreview} onOpenChange={setShowTelegramPreview}>
+        <DialogContent style={{ maxWidth: 600 }}>
+          <DialogHeader>
+            <DialogTitle>Предпросмотр отчёта для Telegram</DialogTitle>
+          </DialogHeader>
+          <pre style={{ whiteSpace: 'pre-wrap', fontSize: 15, background: '#f5f7fa', padding: 16, borderRadius: 8, maxHeight: 350, overflowY: 'auto' }}>{telegramReportText}</pre>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTelegramPreview(false)}>Отмена</Button>
+            <Button
+              style={{ background: '#1565c0', color: '#fff', borderColor: '#1565c0' }}
+              onClick={() => {
+                sendTelegramMutation.mutate({ text: telegramReportText });
+                setShowTelegramPreview(false);
+              }}
+            >
+              Отправить в Telegram
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 

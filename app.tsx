@@ -206,12 +206,16 @@ function Dashboard() {
   });
 
   // Export to Excel mutation
-  const exportMutation = useMutation<MutationKeys['exportToExcel']['data'], Error, MutationKeys['exportToExcel']['variables']>({
+  const exportMutation = useMutation<
+    { reportId: string; fileUrl: string; itemCount: number },
+    Error,
+    { dateFrom?: string; dateTo?: string; keywords?: string[] }
+  >({
     mutationFn: apiClient.exportToExcel,
     onSuccess: (data) => {
       window.open(data.fileUrl, '_blank');
       toast({
-        title: 'Отчет сгенерирован',
+        title: "Экспорт завершен",
         description: `Экспортировано ${data.itemCount} новостей`,
       });
       queryClient.invalidateQueries({ queryKey: ['reports'] });
@@ -1305,7 +1309,7 @@ function SettingsPage() {
                     Система автоматически формирует сводку новостей на основе
                     выбранных источников и ключевых слов. Сводка включает в себя
                     краткое содержание новостей, ссылки на источники и
-                    информацию о налоговых документах. Вы можете получать эти
+                    информацию о налоговых изменениях. Вы можете получать эти
                     сводки на email с выбранной периодичностью.
                   </AlertDescription>
                 </Alert>
