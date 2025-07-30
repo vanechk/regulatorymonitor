@@ -379,50 +379,87 @@ export async function exportToExcel({
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet("Tax News");
 
-  // Add headers
-  worksheet.columns = [
-    { header: "№", key: "index", width: 5 },
-    { header: "№ и дата Письма", key: "documentRef", width: 20 },
-    { header: "Налог", key: "taxType", width: 15 },
-    { header: "Предмет рассмотрения", key: "subject", width: 40 },
-    { header: "Позиция МФ, ФНС", key: "position", width: 50 },
-  ];
+  // --- Заголовок ---
+  const periodStr = dateFrom && dateTo
+    ? `${new Date(dateFrom).toLocaleDateString('ru-RU')} - ${new Date(dateTo).toLocaleDateString('ru-RU')}`
+    : '';
+  worksheet.mergeCells('A1', 'E1');
+  worksheet.getCell('A1').value = `Мониторинг изменений за период ${periodStr}`;
+  worksheet.getCell('A1').font = { bold: true, size: 16 };
+  worksheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' };
+  worksheet.getRow(1).height = 28;
 
-  // Add data
+  // --- Заголовки столбцов ---
+  worksheet.columns = [
+    { header: "№п/п", key: "index", width: 6 },
+    { header: "№ и дата Письма", key: "documentRef", width: 28 },
+    { header: "Налог", key: "taxType", width: 18 },
+    { header: "Предмет рассмотрения", key: "subject", width: 38 },
+    { header: "Позиция МФ, ФНС, Законодателя, Суда", key: "position", width: 70 },
+  ];
+  worksheet.getRow(2).font = { bold: true };
+  worksheet.getRow(2).fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFB7DEE8" },
+  };
+  worksheet.getRow(2).alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+
+  // --- Данные ---
   newsItems.forEach((item, index) => {
-    worksheet.addRow({
+    const row = worksheet.addRow({
       index: index + 1,
       documentRef: item.documentRef || "",
       taxType: item.taxType || "",
       subject: item.subject || item.title,
       position: item.position || item.summary,
     });
+    // Ссылка в ячейке "№ и дата Письма"
+    if (item.documentRef && item.sourceUrl) {
+      row.getCell('documentRef').value = {
+        text: item.documentRef,
+        hyperlink: item.sourceUrl,
+      };
+      row.getCell('documentRef').font = { color: { argb: 'FF0000FF' }, underline: true };
+    }
+    // Жирный текст для "Налог на прибыль"
+    if (item.taxType && item.taxType.toLowerCase().includes('прибыль')) {
+      row.getCell('taxType').font = { bold: true };
+    }
+    // Выравнивание и перенос строк
+    row.alignment = { vertical: 'top', wrapText: true };
   });
 
-  // Style the header row
-  worksheet.getRow(1).font = { bold: true };
-  worksheet.getRow(1).fill = {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: { argb: "FFE0E0E0" },
+  // --- Фильтры ---
+  worksheet.autoFilter = {
+    from: 'A2',
+    to: 'E2',
   };
 
-  // Generate buffer
+  // --- Стили границ ---
+  worksheet.eachRow((row, rowNumber) => {
+    row.eachCell((cell) => {
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFB7DEE8' } },
+        left: { style: 'thin', color: { argb: 'FFB7DEE8' } },
+        bottom: { style: 'thin', color: { argb: 'FFB7DEE8' } },
+        right: { style: 'thin', color: { argb: 'FFB7DEE8' } },
+      };
+    });
+  });
+
+  // --- Заморозка строк ---
+  worksheet.views = [{ state: 'frozen', ySplit: 2 }];
+
+  // --- Генерация файла ---
   const buffer = await workbook.xlsx.writeBuffer();
-
-  // Convert buffer to base64
   const base64 = Buffer.from(buffer).toString("base64");
-
-  // Upload to storage
   const dateStr = new Date().toISOString().split("T")[0];
   const fileName = `tax-news-report-${dateStr}.xlsx`;
-
   const fileUrl = await upload({
     bufferOrBase64: `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${base64}`,
     fileName,
   });
-
-  // Create report record
   const report = await db.report.create({
     data: {
       name: `Tax News Report ${dateStr}`,
@@ -433,7 +470,6 @@ export async function exportToExcel({
       itemCount: newsItems.length,
     },
   });
-
   return {
     reportId: report.id,
     fileUrl: report.fileUrl,

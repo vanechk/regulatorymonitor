@@ -18,6 +18,8 @@ import { Alert } from '../../components/ui/alert';
 import { NewsItem as NewsItemType } from '../../types/api';
 import checkDocImg from '../../assets/check-doc.png';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui/dialog';
+import path from 'path';
+import express from 'express';
 
 // Категоризация новостей с типами
 function categorizeNews(newsItems: NewsItemType[]): Record<string, NewsItemType[]> {
@@ -76,7 +78,7 @@ export default function Dashboard() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [weekChecked, setWeekChecked] = useState(false);
   const [monthChecked, setMonthChecked] = useState(false);
-  const [dateRange, setDateRange] = useState<'today' | 'week' | 'month' | 'custom'>('week');
+  const [dateRange, setDateRange] = useState<'today' | 'yesterday' | 'week' | 'month' | 'custom'>('week');
   const [showTelegramPreview, setShowTelegramPreview] = useState(false);
   const [telegramReportText, setTelegramReportText] = useState('');
 
@@ -387,7 +389,7 @@ export default function Dashboard() {
     }
   }
 
-  const handleDateRange = (range: 'today' | 'week' | 'month') => {
+  const handleDateRange = (range: 'today' | 'yesterday' | 'week' | 'month') => {
     if (range === 'today') {
       const today = new Date();
       const from = new Date(today);
@@ -395,6 +397,14 @@ export default function Dashboard() {
       const to = new Date(today);
       to.setHours(23, 59, 59, 999);
       setDateFrom(from);
+      setDateTo(to);
+    } else if (range === 'yesterday') {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(0, 0, 0, 0);
+      const to = new Date(yesterday);
+      to.setHours(23, 59, 59, 999);
+      setDateFrom(yesterday);
       setDateTo(to);
     } else if (range === 'week') {
       handleWeekCheckbox();
@@ -567,14 +577,22 @@ export default function Dashboard() {
                   <div>
                     <Label htmlFor="dateRange" className="text-white" style={{ color: '#2e9bfe' }}>Период публикации</Label>
                     <div style={{ background: '#e3f2fd', borderRadius: 8, padding: '12px 16px', marginTop: 8 }}>
-                      <div style={{ display: 'flex', gap: '2rem' }}>
+                      <div style={{ display: 'flex', gap: '2rem', fontSize: 14 }}>
                         <label style={{ color: '#2e9bfe', cursor: 'pointer' }}>
                           <input
                             type="radio"
                             name="dateRange"
                             checked={dateRange === 'today'}
                             onChange={() => handleDateRange('today')}
-                          /> За сегодня
+                          /> Сегодня
+                        </label>
+                        <label style={{ color: '#2e9bfe', cursor: 'pointer' }}>
+                          <input
+                            type="radio"
+                            name="dateRange"
+                            checked={dateRange === 'yesterday'}
+                            onChange={() => handleDateRange('yesterday')}
+                          /> Вчера
                         </label>
                         <label style={{ color: '#2e9bfe', cursor: 'pointer' }}>
                           <input
@@ -582,7 +600,7 @@ export default function Dashboard() {
                             name="dateRange"
                             checked={dateRange === 'week'}
                             onChange={() => handleDateRange('week')}
-                          /> За неделю
+                          /> Неделя
                         </label>
                         <label style={{ color: '#2e9bfe', cursor: 'pointer' }}>
                           <input
@@ -590,7 +608,7 @@ export default function Dashboard() {
                             name="dateRange"
                             checked={dateRange === 'month'}
                             onChange={() => handleDateRange('month')}
-                          /> За месяц
+                          /> Месяц
                         </label>
                       </div>
                       <div style={{ marginTop: 12 }}>
