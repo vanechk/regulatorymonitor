@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { fetchAndProcessNews, sendSelectedNewsEmail } from '../../api';
+import { exportToExcel } from '../../api';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -22,6 +23,17 @@ router.post('/sources', async (req, res) => {
     res.json(source);
   } catch (error: any) {
     res.status(500).json({ error: 'Failed to create source', details: error.message });
+  }
+});
+
+// Удаление источника
+router.delete('/sources/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.source.delete({ where: { id } });
+    res.json({ ok: true });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to delete source', details: error.message });
   }
 });
 
@@ -204,6 +216,21 @@ router.post('/telegram/report', async (req, res) => {
   } catch (error: any) {
     console.error('Ошибка при отправке в Telegram:', error);
     res.status(500).json({ error: 'Ошибка при отправке в Telegram', details: error.message });
+  }
+});
+
+// Экспорт новостей в Excel
+router.get('/reports/export', async (req, res) => {
+  try {
+    const { dateFrom, dateTo, keywords } = req.query;
+    const result = await exportToExcel({
+      dateFrom: dateFrom as string | undefined,
+      dateTo: dateTo as string | undefined,
+      keywords: keywords ? (keywords as string).split(',').map(k => k.trim()) : undefined,
+    });
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: 'Ошибка экспорта', details: error.message });
   }
 });
 

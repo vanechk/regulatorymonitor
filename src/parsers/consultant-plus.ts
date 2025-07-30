@@ -51,7 +51,7 @@ export async function parseConsultantPlus(url: string, keywords: string[]): Prom
         const parsedDate = parseRussianDate(dateText);
         let publishedDate = 'NO_DATE';
         if (parsedDate) {
-          const [day, month, year] = parsedDate.split('.');
+        const [day, month, year] = parsedDate.split('.');
           publishedDate = new Date(`${year}-${month}-${day}T00:00:00Z`).toISOString();
         }
         if (title && summary) {
