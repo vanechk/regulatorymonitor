@@ -1,30 +1,19 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-import { ParserResult, ParsedArticle, fetchWithRetry } from './index';
+import { ParserResult, ParsedArticle } from './index';
+import puppeteer from 'puppeteer';
 
 export async function parseMinfin(url: string, keywords: string[]): Promise<ParserResult> {
   try {
-    console.log(`Parsing Minfin: ${url}`);
-    
-    const response = await fetchWithRetry(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        'Cache-Control': 'max-age=0'
-      },
-      validateStatus: function (status) {
-        return status >= 200 && status < 300;
-      }
-    });
-    if (!response || !response.data) throw new Error('Нет данных от Минфина (response is undefined)');
-    
-    const $ = cheerio.load(response.data);
+    console.log(`Parsing Minfin with Puppeteer: ${url}`);
+    const browser = await puppeteer.launch({ headless: true });
+    const page = await browser.newPage();
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+    const html = await page.content();
+    await browser.close();
+    const $ = cheerio.load(html);
     const articles: ParsedArticle[] = [];
-    
     const selectors = [
       '.news__item',
       '.news-item, .article-item, .content-item',
@@ -62,10 +51,8 @@ export async function parseMinfin(url: string, keywords: string[]): Promise<Pars
       });
       if (articles.length > 0) break;
     }
-    
     console.log(`Found ${articles.length} articles from Minfin`);
     return { articles };
-    
   } catch (error) {
     console.error('Error parsing Minfin:', error);
     return {

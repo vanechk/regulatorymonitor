@@ -381,7 +381,17 @@ export async function exportToExcel({
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet("Tax News");
 
-  // Add headers
+  // --- Заголовок ---
+  const periodStr = dateFrom && dateTo
+    ? `${new Date(dateFrom).toLocaleDateString('ru-RU')} - ${new Date(dateTo).toLocaleDateString('ru-RU')}`
+    : '';
+  worksheet.mergeCells('A1', 'G1');
+  worksheet.getCell('A1').value = `Мониторинг изменений за период ${periodStr}`;
+  worksheet.getCell('A1').font = { bold: true, size: 16 };
+  worksheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' };
+  worksheet.getRow(1).height = 28;
+
+  // --- Заголовки столбцов ---
   worksheet.columns = [
     { header: "№", key: "index", width: 5 },
     { header: "Источник", key: "sourceName", width: 25 },
@@ -391,14 +401,21 @@ export async function exportToExcel({
     { header: "Описание", key: "description", width: 50 },
     { header: "Ссылка", key: "sourceUrl", width: 30 },
   ];
+  worksheet.getRow(2).font = { bold: true };
+  worksheet.getRow(2).fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFB7DEE8" },
+  };
+  worksheet.getRow(2).alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
 
-  // Add data
+  // --- Данные ---
   newsItems.forEach((item, index) => {
     const sourceType = item.source?.type || 'неизвестно';
     const sourceName = item.source?.name || item.sourceName || 'неизвестно';
     const publishedDate = item.publishedAt ? new Date(item.publishedAt).toLocaleDateString('ru-RU') : '';
     
-    worksheet.addRow({
+    const row = worksheet.addRow({
       index: index + 1,
       sourceName: sourceName,
       sourceType: sourceType === 'website' ? 'Веб-сайт' : sourceType === 'telegram' ? 'Telegram' : sourceType,
@@ -407,23 +424,35 @@ export async function exportToExcel({
       description: item.summary || "",
       sourceUrl: item.sourceUrl || "",
     });
+    
+    // Выравнивание и перенос строк
+    row.alignment = { vertical: 'top', wrapText: true };
   });
 
-  // Style the header row
-  worksheet.getRow(1).font = { bold: true };
-  worksheet.getRow(1).fill = {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: { argb: "FFE0E0E0" },
+  // --- Фильтры ---
+  worksheet.autoFilter = {
+    from: 'A2',
+    to: 'G2',
   };
 
-  // Generate buffer
+  // --- Стили границ ---
+  worksheet.eachRow((row, rowNumber) => {
+    row.eachCell((cell) => {
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFB7DEE8' } },
+        left: { style: 'thin', color: { argb: 'FFB7DEE8' } },
+        bottom: { style: 'thin', color: { argb: 'FFB7DEE8' } },
+        right: { style: 'thin', color: { argb: 'FFB7DEE8' } },
+      };
+    });
+  });
+
+  // --- Заморозка строк ---
+  worksheet.views = [{ state: 'frozen', ySplit: 2 }];
+
+  // --- Генерация файла ---
   const buffer = await workbook.xlsx.writeBuffer();
-
-  // Convert buffer to base64
   const base64 = Buffer.from(buffer).toString("base64");
-
-  // Upload to storage
   const dateStr = new Date().toISOString().split("T")[0];
   let fileName = `tax-news-report-${dateStr}`;
   
@@ -610,7 +639,6 @@ export async function exportCurrentNewsToExcel({
       itemCount: newsItems.length,
     },
   });
-
   return {
     reportId: report.id,
     fileUrl: report.fileUrl,

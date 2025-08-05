@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { fetchAndProcessNews, sendSelectedNewsEmail } from '../../api';
+import { exportToExcel } from '../../api';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -22,6 +23,17 @@ router.post('/sources', async (req, res) => {
     res.json(source);
   } catch (error: any) {
     res.status(500).json({ error: 'Failed to create source', details: error.message });
+  }
+});
+
+// Удаление источника
+router.delete('/sources/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.source.delete({ where: { id } });
+    res.json({ ok: true });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to delete source', details: error.message });
   }
 });
 
