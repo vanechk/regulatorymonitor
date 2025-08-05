@@ -209,7 +209,7 @@ function Dashboard() {
   const exportMutation = useMutation<
     { reportId: string; fileUrl: string; itemCount: number },
     Error,
-    { dateFrom?: string; dateTo?: string; keywords?: string[] }
+    { dateFrom?: string; dateTo?: string; keywords?: string[]; sourceType?: string }
   >({
     mutationFn: apiClient.exportToExcel,
     onSuccess: (data) => {
@@ -261,6 +261,7 @@ function Dashboard() {
       dateFrom: dateFrom?.toISOString(),
       dateTo: dateTo?.toISOString(),
       keywords: filterKeywords ? filterKeywords.split(',').map(k => k.trim()) : undefined,
+      sourceType,
     });
   };
 

@@ -25,10 +25,32 @@ export async function sendEmail(to: string, subject: string, content: string): P
   console.log(`Sending email to ${to}: ${subject}`);
 }
 
+// Простое хранилище файлов в памяти
+const fileStorage = new Map<string, { buffer: Buffer; fileName: string }>();
+
 // Функция для загрузки файлов
 export async function upload(params: { bufferOrBase64: string; fileName: string }): Promise<string> {
-  // Здесь должна быть реализация загрузки файлов
-  return 'file-url';
+  console.log('Upload function called with fileName:', params.fileName);
+  
+  // Извлекаем base64 данные
+  const base64Data = params.bufferOrBase64.replace(/^data:application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet;base64,/, '');
+  const buffer = Buffer.from(base64Data, 'base64');
+  
+  // Генерируем уникальный ID файла
+  const fileId = Math.random().toString(36).substring(2, 15);
+  
+  // Сохраняем файл в памяти
+  fileStorage.set(fileId, { buffer, fileName: params.fileName });
+  
+  const fileUrl = `/api/files/download/${fileId}/${params.fileName}`;
+  console.log('Upload function returning fileUrl:', fileUrl);
+  
+  return fileUrl;
+}
+
+// Функция для получения файла
+export function getFile(fileId: string) {
+  return fileStorage.get(fileId);
 }
 
 // Функция для запроса к мультимодальной модели

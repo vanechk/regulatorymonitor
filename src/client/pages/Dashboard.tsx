@@ -157,20 +157,36 @@ export default function Dashboard() {
     },
   });
 
-  // Export mutation
-  const exportMutation = useMutation<
+
+
+  // Export current news mutation
+  const exportCurrentMutation = useMutation<
     { reportId: string; fileUrl: string; itemCount: number },
     Error,
-    { dateFrom?: string; dateTo?: string; keywords?: string[] }
+    { newsIds: string[] }
   >({
-    mutationFn: apiClient.exportToExcel,
+    mutationFn: ({ newsIds }) => apiClient.exportCurrentNewsToExcel({
+      newsIds,
+      dateFrom: dateFrom?.toISOString(),
+      dateTo: dateTo?.toISOString(),
+      keywords: filterKeywords ? filterKeywords.split(',').map(k => k.trim()) : undefined,
+      sourceType,
+    }),
     onSuccess: (data) => {
-      window.open(data.fileUrl, '_blank');
+      // Запускаем скачивание файла
+      window.location.href = data.fileUrl;
       toast({
         title: "Экспорт завершен",
-        description: `Экспортировано ${data.itemCount} новостей`,
+        description: `Экспортировано ${data.itemCount} новостей. Скачивание началось автоматически.`,
       });
       queryClient.invalidateQueries({ queryKey: ['reports'] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Ошибка экспорта",
+        description: error.message || "Не удалось экспортировать новости",
+        variant: "destructive",
+      });
     },
   });
 
@@ -201,6 +217,8 @@ export default function Dashboard() {
     },
   });
 
+
+
   // Effect to refetch news when filters are cleared
   useEffect(() => {
     if (!dateFrom && !dateTo && !filterKeywords && !sourceType) {
@@ -227,12 +245,21 @@ export default function Dashboard() {
   };
 
   const handleExport = () => {
-    if (exportMutation.isPending) return;
-    exportMutation.mutate({
-      dateFrom: dateFrom?.toISOString(),
-      dateTo: dateTo?.toISOString(),
-      keywords: filterKeywords ? filterKeywords.split(',').map(k => k.trim()) : undefined,
-    }, {
+    if (exportCurrentMutation.isPending) return;
+    
+    // Если есть выбранные новости, экспортируем их, иначе используем текущие фильтры
+    const newsIdsToExport = selectedNewsIds.length > 0 ? selectedNewsIds : [];
+    
+    if (newsIdsToExport.length === 0 && newsItems.length === 0) {
+      toast({
+        title: "Нет новостей для экспорта",
+        description: "Пожалуйста, выберите новости или примените фильтры",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    exportCurrentMutation.mutate({ newsIds: newsIdsToExport }, {
       onError: () => setApiError('Ошибка экспорта. Проверьте соединение с сервером.'),
     });
   };
@@ -285,11 +312,13 @@ export default function Dashboard() {
     const period = `${formatDate(dateFrom)} - ${formatDate(dateTo)}`;
     let report = `Мониторинг законодательства - ${period}\n\n`;
     newsItems.forEach(item => {
-      report += `- ${item.title}\n`;
+      // Экранируем спецсимволы для MarkdownV2 Telegram
+      const escape = (text: string) => text.replace(/[\[\]()_~`>#+\-=|{}.!]/g, r => '\\' + r);
+      const title = escape(item.title);
+      const sourceName = escape(item.sourceName);
+      const url = item.sourceUrl;
+      report += `- [${title}](${url}) (Источник: [${sourceName}](${url}))\n`;
     });
-    // Можно добавить ссылки, если они есть
-    // report += `\n📚 Подробнее: ...\n`;
-    // report += `📑 Скачать полный мониторинг: ...\n`;
     return report;
   }
 
@@ -548,10 +577,10 @@ export default function Dashboard() {
             <Button
               variant="outline"
               onClick={handleExport}
-              disabled={exportMutation.isPending}
+              disabled={exportCurrentMutation.isPending}
               style={{ color: '#0000cc', borderColor: '#0000cc', background: '#fff' }}
             >
-              {exportMutation.isPending ? "Экспорт..." : "Выгрузить в Excel"}
+              {exportCurrentMutation.isPending ? "Экспорт..." : "Выгрузить в Excel"}
             </Button>
           </div>
 
