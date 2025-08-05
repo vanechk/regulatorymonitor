@@ -131,6 +131,32 @@ router.get('/reports', async (req, res) => {
         res.status(500).json({ error: 'Ошибка при получении отчетов' });
     }
 });
+
+// Экспорт в Excel
+router.get('/reports/export', async (req, res) => {
+    try {
+        const { dateFrom, dateTo, keywords, sourceType } = req.query;
+        console.log('Export query params:', { dateFrom, dateTo, keywords, sourceType });
+        
+        // Импортируем функцию из основного API файла
+        const { exportToExcel } = await import('../../api');
+        
+        const result = await exportToExcel({
+            dateFrom: dateFrom,
+            dateTo: dateTo,
+            keywords: keywords ? keywords.split(',').map(k => k.trim()).filter(k => k !== '') : undefined,
+            sourceType: sourceType,
+        });
+        
+        console.log('Export result:', result);
+        res.json(result);
+    }
+    catch (error) {
+        console.error('Error exporting to Excel:', error);
+        res.status(500).json({ error: 'Ошибка при экспорте в Excel' });
+    }
+});
+
 // Настройки email
 router.get('/email-settings', async (req, res) => {
     try {

@@ -207,4 +207,105 @@ router.post('/telegram/report', async (req, res) => {
   }
 });
 
+// Экспорт в Excel
+router.get('/reports/export', async (req, res) => {
+  try {
+    const { dateFrom, dateTo, keywords, sourceType } = req.query;
+    console.log('Export query params:', { dateFrom, dateTo, keywords, sourceType });
+    
+    // Импортируем функцию из основного API файла
+    const { exportToExcel } = await import('../../api');
+    
+    const result = await exportToExcel({
+      dateFrom: dateFrom as string,
+      dateTo: dateTo as string,
+      keywords: keywords ? (keywords as string).split(',').map(k => k.trim()).filter(k => k !== '') : undefined,
+      sourceType: sourceType as string,
+    });
+    
+    console.log('Export result:', result);
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error exporting to Excel:', error);
+    res.status(500).json({ error: 'Ошибка при экспорте в Excel' });
+  }
+});
+
+// Экспорт текущих новостей в Excel
+router.post('/reports/export-current', async (req, res) => {
+  try {
+    const { newsIds, dateFrom, dateTo, keywords, sourceType } = req.body;
+    console.log('Export current news params:', { newsIds, dateFrom, dateTo, keywords, sourceType });
+    
+    // Импортируем функцию из основного API файла
+    const { exportCurrentNewsToExcel } = await import('../../api');
+    
+    console.log('Function imported successfully');
+    
+    const result = await exportCurrentNewsToExcel({
+      newsIds,
+      dateFrom,
+      dateTo,
+      keywords,
+      sourceType,
+    });
+    
+    console.log('Export current result:', result);
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error exporting current news to Excel:', error);
+    console.error('Error details:', error.message);
+    res.status(500).json({ error: 'Ошибка при экспорте в Excel', details: error.message });
+  }
+});
+
+// Тестовый экспорт пустого Excel файла
+router.post('/reports/test-export', async (req, res) => {
+  try {
+    console.log('Test export endpoint called');
+    
+    // Импортируем функцию из основного API файла
+    const { createEmptyExcelFile } = await import('../../api');
+    
+    console.log('Function imported successfully');
+    
+    const result = await createEmptyExcelFile();
+    
+    console.log('Test export result:', result);
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error in test export:', error);
+    console.error('Error details:', error.message);
+    res.status(500).json({ error: 'Ошибка при тестовом экспорте', details: error.message });
+  }
+});
+
+// Скачивание файлов
+router.get('/files/download/:fileId/:fileName', async (req, res) => {
+  try {
+    const { fileId, fileName } = req.params;
+    
+    // Импортируем функцию для получения файла
+    const { getFile } = await import('../server/actions');
+    
+    // Получаем файл из хранилища
+    const fileData = getFile(fileId);
+    
+    if (!fileData) {
+      return res.status(404).json({ error: 'Файл не найден' });
+    }
+    
+    // Устанавливаем заголовки для скачивания
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    
+    // Отправляем файл
+    res.send(fileData.buffer);
+    
+  } catch (error: any) {
+    console.error('Error downloading file:', error);
+    res.status(500).json({ error: 'Ошибка при скачивании файла' });
+  }
+});
+
 export { router as apiRouter }; 

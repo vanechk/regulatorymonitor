@@ -230,15 +230,17 @@ export const apiClient = {
     return z.array(ReportSchema).parse(data);
   },
 
-  exportToExcel: async ({ dateFrom, dateTo, keywords }: {
+  exportToExcel: async ({ dateFrom, dateTo, keywords, sourceType }: {
     dateFrom?: string;
     dateTo?: string;
     keywords?: string[];
+    sourceType?: string;
   }): Promise<{ reportId: string; fileUrl: string; itemCount: number }> => {
     const params = new URLSearchParams();
     if (dateFrom) params.append('dateFrom', dateFrom);
     if (dateTo) params.append('dateTo', dateTo);
     if (keywords) params.append('keywords', keywords.join(','));
+    if (sourceType) params.append('sourceType', sourceType);
 
     let response;
     try {
@@ -248,6 +250,35 @@ export const apiClient = {
     }
     if (!response.ok) {
       let errorText = 'Ошибка экспорта';
+      try {
+        const error = await response.json();
+        errorText = error.error || errorText;
+      } catch (e) {}
+      throw new Error(errorText);
+    }
+    const data = await response.json();
+    return data;
+  },
+
+  exportCurrentNewsToExcel: async ({ newsIds, dateFrom, dateTo, keywords, sourceType }: {
+    newsIds: string[];
+    dateFrom?: string;
+    dateTo?: string;
+    keywords?: string[];
+    sourceType?: string;
+  }): Promise<{ reportId: string; fileUrl: string; itemCount: number }> => {
+    let response;
+    try {
+      response = await fetch('/api/reports/export-current', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newsIds, dateFrom, dateTo, keywords, sourceType })
+      });
+    } catch (err) {
+      throw new Error('Сервер недоступен');
+    }
+    if (!response.ok) {
+      let errorText = 'Ошибка экспорта выбранных новостей';
       try {
         const error = await response.json();
         errorText = error.error || errorText;
@@ -349,6 +380,27 @@ export const apiClient = {
       } catch (e) {}
       throw new Error(errorText);
     }
+    return response.json();
+  },
+
+  // Тестовый экспорт пустого Excel файла
+  testExportEmptyExcel: async (): Promise<{ reportId: string; fileUrl: string; itemCount: number }> => {
+    const response = await fetch('/api/reports/test-export', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      let errorText = 'Ошибка при тестовом экспорте';
+      try {
+        const error = await response.json();
+        errorText = error.error || errorText;
+      } catch (e) {}
+      throw new Error(errorText);
+    }
+
     return response.json();
   }
 };

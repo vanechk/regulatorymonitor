@@ -364,12 +364,14 @@ export async function exportToExcel({
   dateFrom,
   dateTo,
   keywords,
+  sourceType,
 }: {
   dateFrom?: string;
   dateTo?: string;
   keywords?: string[];
+  sourceType?: string;
 }) {
-  const newsItems = await getNews({ dateFrom, dateTo, keywords });
+  const newsItems = await getNews({ dateFrom, dateTo, keywords, sourceType });
 
   if (newsItems.length === 0) {
     throw new Error("No news items found matching the criteria");
@@ -382,20 +384,28 @@ export async function exportToExcel({
   // Add headers
   worksheet.columns = [
     { header: "№", key: "index", width: 5 },
-    { header: "№ и дата Письма", key: "documentRef", width: 20 },
-    { header: "Налог", key: "taxType", width: 15 },
-    { header: "Предмет рассмотрения", key: "subject", width: 40 },
-    { header: "Позиция МФ, ФНС", key: "position", width: 50 },
+    { header: "Источник", key: "sourceName", width: 25 },
+    { header: "Тип источника", key: "sourceType", width: 15 },
+    { header: "Дата публикации", key: "publishedAt", width: 15 },
+    { header: "Заголовок", key: "title", width: 40 },
+    { header: "Описание", key: "description", width: 50 },
+    { header: "Ссылка", key: "sourceUrl", width: 30 },
   ];
 
   // Add data
   newsItems.forEach((item, index) => {
+    const sourceType = item.source?.type || 'неизвестно';
+    const sourceName = item.source?.name || item.sourceName || 'неизвестно';
+    const publishedDate = item.publishedAt ? new Date(item.publishedAt).toLocaleDateString('ru-RU') : '';
+    
     worksheet.addRow({
       index: index + 1,
-      documentRef: item.documentRef || "",
-      taxType: item.taxType || "",
-      subject: item.subject || item.title,
-      position: item.position || item.summary,
+      sourceName: sourceName,
+      sourceType: sourceType === 'website' ? 'Веб-сайт' : sourceType === 'telegram' ? 'Telegram' : sourceType,
+      publishedAt: publishedDate,
+      title: item.title || "",
+      description: item.summary || "",
+      sourceUrl: item.sourceUrl || "",
     });
   });
 
@@ -415,7 +425,22 @@ export async function exportToExcel({
 
   // Upload to storage
   const dateStr = new Date().toISOString().split("T")[0];
-  const fileName = `tax-news-report-${dateStr}.xlsx`;
+  let fileName = `tax-news-report-${dateStr}`;
+  
+  // Add source type to filename if specified
+  if (sourceType) {
+    const sourceTypeLabel = sourceType === 'website' ? 'website' : sourceType === 'telegram' ? 'telegram' : sourceType;
+    fileName += `-${sourceTypeLabel}`;
+  }
+  
+  // Add date range to filename if specified
+  if (dateFrom || dateTo) {
+    const fromStr = dateFrom ? new Date(dateFrom).toISOString().split("T")[0] : 'start';
+    const toStr = dateTo ? new Date(dateTo).toISOString().split("T")[0] : 'end';
+    fileName += `-${fromStr}-to-${toStr}`;
+  }
+  
+  fileName += '.xlsx';
 
   const fileUrl = await upload({
     bufferOrBase64: `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${base64}`,
@@ -423,9 +448,161 @@ export async function exportToExcel({
   });
 
   // Create report record
+  let reportName = `Отчет по новостям ${dateStr}`;
+  
+  if (sourceType) {
+    const sourceTypeLabel = sourceType === 'website' ? 'веб-сайты' : sourceType === 'telegram' ? 'Telegram' : sourceType;
+    reportName += ` (${sourceTypeLabel})`;
+  }
+  
+  if (dateFrom || dateTo) {
+    const fromStr = dateFrom ? new Date(dateFrom).toLocaleDateString('ru-RU') : 'начало';
+    const toStr = dateTo ? new Date(dateTo).toLocaleDateString('ru-RU') : 'конец';
+    reportName += ` (${fromStr} - ${toStr})`;
+  }
+  
   const report = await db.report.create({
     data: {
-      name: `Tax News Report ${dateStr}`,
+      name: reportName,
+      fileUrl,
+      dateFrom: dateFrom ? new Date(dateFrom) : new Date(0),
+      dateTo: dateTo ? new Date(dateTo) : new Date(),
+      keywordsUsed: keywords?.join(", ") || "",
+      itemCount: newsItems.length,
+    },
+  });
+
+  return {
+    reportId: report.id,
+    fileUrl: report.fileUrl,
+    itemCount: newsItems.length,
+  };
+}
+
+// Экспорт текущих новостей в Excel
+export async function exportCurrentNewsToExcel({
+  newsIds,
+  dateFrom,
+  dateTo,
+  keywords,
+  sourceType,
+}: {
+  newsIds: string[];
+  dateFrom?: string;
+  dateTo?: string;
+  keywords?: string[];
+  sourceType?: string;
+}) {
+  console.log('exportCurrentNewsToExcel called with params:', { newsIds, dateFrom, dateTo, keywords, sourceType });
+  let newsItems;
+  
+  // Если переданы конкретные ID новостей, получаем их
+  if (newsIds.length > 0) {
+    newsItems = await db.newsItem.findMany({
+      where: { id: { in: newsIds } },
+      include: { source: true },
+      orderBy: { publishedAt: "desc" },
+    });
+  } else {
+    // Иначе используем те же фильтры, что и для отображения
+    newsItems = await getNews({ dateFrom, dateTo, keywords, sourceType });
+  }
+
+  if (newsItems.length === 0) {
+    throw new Error("Не найдено новостей для экспорта");
+  }
+
+  // Create Excel workbook
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("Tax News");
+
+  // Add headers
+  worksheet.columns = [
+    { header: "№", key: "index", width: 5 },
+    { header: "Источник", key: "sourceName", width: 25 },
+    { header: "Тип источника", key: "sourceType", width: 15 },
+    { header: "Дата публикации", key: "publishedAt", width: 15 },
+    { header: "Заголовок", key: "title", width: 40 },
+    { header: "Описание", key: "description", width: 50 },
+    { header: "Ссылка", key: "sourceUrl", width: 30 },
+  ];
+
+  // Add data
+  newsItems.forEach((item, index) => {
+    const sourceType = item.source?.type || 'неизвестно';
+    const sourceName = item.source?.name || item.sourceName || 'неизвестно';
+    const publishedDate = item.publishedAt ? new Date(item.publishedAt).toLocaleDateString('ru-RU') : '';
+    
+    worksheet.addRow({
+      index: index + 1,
+      sourceName: sourceName,
+      sourceType: sourceType === 'website' ? 'Веб-сайт' : sourceType === 'telegram' ? 'Telegram' : sourceType,
+      publishedAt: publishedDate,
+      title: item.title || "",
+      description: item.summary || "",
+      sourceUrl: item.sourceUrl || "",
+    });
+  });
+
+  // Style the header row
+  worksheet.getRow(1).font = { bold: true };
+  worksheet.getRow(1).fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFE0E0E0" },
+  };
+
+  // Generate buffer
+  const buffer = await workbook.xlsx.writeBuffer();
+
+  // Convert buffer to base64
+  const base64 = Buffer.from(buffer).toString("base64");
+
+  // Upload to storage
+  const dateStr = new Date().toISOString().split("T")[0];
+  let fileName = `tax-news-export-${dateStr}-${newsItems.length}-items`;
+  
+  // Add source type to filename if specified
+  if (sourceType) {
+    const sourceTypeLabel = sourceType === 'website' ? 'website' : sourceType === 'telegram' ? 'telegram' : sourceType;
+    fileName += `-${sourceTypeLabel}`;
+  }
+  
+  // Add date range to filename if specified
+  if (dateFrom || dateTo) {
+    const fromStr = dateFrom ? new Date(dateFrom).toISOString().split("T")[0] : 'start';
+    const toStr = dateTo ? new Date(dateTo).toISOString().split("T")[0] : 'end';
+    fileName += `-${fromStr}-to-${toStr}`;
+  }
+  
+  fileName += '.xlsx';
+
+  console.log('Calling upload function with fileName:', fileName);
+  const fileUrl = await upload({
+    bufferOrBase64: `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${base64}`,
+    fileName,
+  });
+  console.log('Upload function returned fileUrl:', fileUrl);
+
+  // Create report record
+  let reportName = newsIds.length > 0 ? 
+    `Экспорт выбранных новостей ${dateStr} (${newsItems.length} шт.)` :
+    `Экспорт новостей ${dateStr} (${newsItems.length} шт.)`;
+  
+  if (sourceType) {
+    const sourceTypeLabel = sourceType === 'website' ? 'веб-сайты' : sourceType === 'telegram' ? 'Telegram' : sourceType;
+    reportName += ` (${sourceTypeLabel})`;
+  }
+  
+  if (dateFrom || dateTo) {
+    const fromStr = dateFrom ? new Date(dateFrom).toLocaleDateString('ru-RU') : 'начало';
+    const toStr = dateTo ? new Date(dateTo).toLocaleDateString('ru-RU') : 'конец';
+    reportName += ` (${fromStr} - ${toStr})`;
+  }
+  
+  const report = await db.report.create({
+    data: {
+      name: reportName,
       fileUrl,
       dateFrom: dateFrom ? new Date(dateFrom) : new Date(0),
       dateTo: dateTo ? new Date(dateTo) : new Date(),
@@ -831,4 +1008,76 @@ export async function sendSelectedNewsEmail({
     console.error('Error sending selected news email:', error);
     throw new Error('Ошибка при отправке email');
   }
+}
+
+// Простая функция для создания пустого Excel файла (для тестирования)
+export async function createEmptyExcelFile(): Promise<{ reportId: string; fileUrl: string; itemCount: number }> {
+  console.log('Creating empty Excel file for testing...');
+  
+  // Создаем простой Excel файл
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("Test");
+  
+  // Добавляем заголовки
+  worksheet.columns = [
+    { header: "№", key: "index", width: 5 },
+    { header: "Источник", key: "sourceName", width: 25 },
+    { header: "Тип источника", key: "sourceType", width: 15 },
+    { header: "Дата публикации", key: "publishedAt", width: 15 },
+    { header: "Заголовок", key: "title", width: 40 },
+    { header: "Описание", key: "description", width: 50 },
+    { header: "Ссылка", key: "sourceUrl", width: 30 },
+  ];
+  
+  // Добавляем тестовые данные
+  worksheet.addRow({
+    index: 1,
+    sourceName: "Тестовый источник",
+    sourceType: "Веб-сайт",
+    publishedAt: new Date().toLocaleDateString('ru-RU'),
+    title: "Тестовый файл",
+    description: "Это пустой Excel файл для тестирования скачивания",
+    sourceUrl: "https://example.com/test"
+  });
+  
+  // Стилизуем заголовок
+  worksheet.getRow(1).font = { bold: true };
+  worksheet.getRow(1).fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFE0E0E0" },
+  };
+  
+  // Генерируем буфер
+  const buffer = await workbook.xlsx.writeBuffer();
+  const base64 = Buffer.from(buffer).toString("base64");
+  
+  // Загружаем файл
+  const { upload } = await import('./src/server/actions');
+  const fileName = `test-export-${new Date().toISOString().split("T")[0]}.xlsx`;
+  
+  console.log('Calling upload function with fileName:', fileName);
+  const fileUrl = await upload({
+    bufferOrBase64: `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${base64}`,
+    fileName,
+  });
+  console.log('Upload function returned fileUrl:', fileUrl);
+  
+  // Создаем запись в базе данных
+  const report = await db.report.create({
+    data: {
+      name: `Тестовый экспорт ${new Date().toLocaleDateString('ru-RU')}`,
+      fileUrl,
+      dateFrom: new Date(0),
+      dateTo: new Date(),
+      keywordsUsed: "",
+      itemCount: 1,
+    },
+  });
+  
+  return {
+    reportId: report.id,
+    fileUrl: report.fileUrl,
+    itemCount: 1,
+  };
 }
