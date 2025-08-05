@@ -63,6 +63,16 @@ DATABASE_URL="mysql://user:password@localhost:3306/taxnewsradar"
    mysql -u root -p
    ```
 3. Введите установленный пароль
+4. Поздравляю, вы зашли в MySQL
+
+### 4. Создание базы данных
+1.	После входа в MySQL введите команды:
+CREATE DATABASE your_database_name; наша база - taxnewsradar
+CREATE USER 'your_user'@'localhost' IDENTIFIED BY 'your_password';
+GRANT ALL PRIVILEGES ON your_database_name.* TO 'your_user'@'localhost';
+FLUSH PRIVILEGES;
+2.	Выход из MySQL:
+EXIT;
 
 ## Установка на macOS
 
@@ -89,12 +99,22 @@ DATABASE_URL="mysql://user:password@localhost:3306/taxnewsradar"
    ```
 
 ### 3. Проверка установки
-1. Откройте терминал
+1. Откройте командную строку
 2. Введите команду:
    ```bash
    mysql -u root -p
    ```
 3. Введите установленный пароль
+4. Поздравляю, вы зашли в MySQL
+
+### 4. Создание базы данных
+1.	После входа в MySQL введите команды:
+CREATE DATABASE your_database_name; наша база - taxnewsradar
+CREATE USER 'your_user'@'localhost' IDENTIFIED BY 'your_password';
+GRANT ALL PRIVILEGES ON your_database_name.* TO 'your_user'@'localhost';
+FLUSH PRIVILEGES;
+2.	Выход из MySQL:
+EXIT;
 
 ## Дополнительные инструменты
 
