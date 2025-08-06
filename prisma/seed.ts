@@ -50,6 +50,16 @@ const sources = [
   { name: 'Мытарь РФ', url: 'https://t.me/mytar_rf', type: 'telegram' },
   { name: 'DD Tax', url: 'https://t.me/DD_tax', type: 'telegram' },
   { name: 'Науфор Telegram', url: 'https://t.me/naufortelegram', type: 'telegram' },
+  // Дополнительные налоговые источники
+  { name: 'Taxology', url: 'https://taxology.ru/analitic#digests', type: 'website' },
+  { name: 'Deloitte Налоги', url: 'https://www2.deloitte.com/ru/ru/services/tax.html', type: 'website' },
+  { name: 'PwC Налоги', url: 'https://www.pwc.ru/ru/services/tax.html', type: 'website' },
+  { name: 'EY Налоги', url: 'https://www.ey.com/ru_ru/services/tax', type: 'website' },
+  { name: 'KPMG Налоги', url: 'https://home.kpmg/ru/ru/home/services/tax.html', type: 'website' },
+  { name: 'Deloitte Tax', url: 'https://t.me/deloitte_tax', type: 'telegram' },
+  { name: 'PwC Tax', url: 'https://t.me/pwc_tax', type: 'telegram' },
+  { name: 'Tax Expert', url: 'https://t.me/tax_expert', type: 'telegram' },
+  { name: 'Налоговый консультант', url: 'https://t.me/nalog_consultant', type: 'telegram' },
 ];
 
 const keywords = [
@@ -73,6 +83,21 @@ const keywords = [
   'Минфин',
   'налоговая служба',
   'налоговое законодательство',
+  'налоговая оптимизация',
+  'налоговый аудит',
+  'налоговая проверка',
+  'налоговые споры',
+  'налоговая ответственность',
+  'налоговые санкции',
+  'налоговый учет',
+  'налоговая отчетность',
+  'налоговые льготы',
+  'налоговые вычеты',
+  'налоговая политика',
+  'налоговые изменения',
+  'налоговые новости',
+  'налоговый консалтинг',
+  'налоговое планирование',
 ];
 
 async function main() {

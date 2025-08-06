@@ -10,6 +10,7 @@ export interface NewsItem {
   taxType?: string | null;
   subject?: string | null;
   position?: string | null;
+  source?: Source;
 }
 
 export interface Source {

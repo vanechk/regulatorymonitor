@@ -170,6 +170,55 @@ router.get('/reports', async (req, res) => {
   }
 });
 
+// Экспорт в Excel
+router.get('/reports/export', async (req, res) => {
+  try {
+    const { dateFrom, dateTo, keywords, sourceType } = req.query;
+    console.log('Export query params:', { dateFrom, dateTo, keywords, sourceType });
+    
+    // Импортируем функцию из основного API файла
+    const { exportToExcel } = await import('../../api');
+    
+    const result = await exportToExcel({
+      dateFrom: dateFrom as string,
+      dateTo: dateTo as string,
+      keywords: keywords ? (keywords as string).split(',').map(k => k.trim()).filter(k => k !== '') : undefined,
+      sourceType: sourceType as string,
+    });
+    
+    console.log('Export result:', result);
+    res.json(result);
+  } catch (error) {
+    console.error('Error exporting to Excel:', error);
+    res.status(500).json({ error: 'Ошибка при экспорте в Excel' });
+  }
+});
+
+// Экспорт текущих новостей в Excel
+router.post('/reports/export-current', async (req, res) => {
+  try {
+    const { newsIds, dateFrom, dateTo, keywords, sourceType } = req.body;
+    console.log('Export current news params:', { newsIds, dateFrom, dateTo, keywords, sourceType });
+    
+    // Импортируем функцию из основного API файла
+    const { exportCurrentNewsToExcel } = await import('../../api');
+    
+    const result = await exportCurrentNewsToExcel({
+      newsIds,
+      dateFrom,
+      dateTo,
+      keywords,
+      sourceType,
+    });
+    
+    console.log('Export current result:', result);
+    res.json(result);
+  } catch (error) {
+    console.error('Error exporting current news to Excel:', error);
+    res.status(500).json({ error: 'Ошибка при экспорте в Excel' });
+  }
+});
+
 // Настройки email
 router.get('/email-settings', async (req, res) => {
   try {
