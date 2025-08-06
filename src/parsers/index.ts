@@ -80,7 +80,7 @@ export async function parseUniversal(url: string, keywords: string[], sourceName
     ];
     
     for (const selector of selectors) {
-      $(selector).each((index, element) => {
+      $(selector).each((index: number, element: any) => {
         const $el = $(element);
         
         let title = $el.find('.title, .headline, .article-title, .news-title, h1, h2, h3, .card-title, .item-title').first().text().trim();
