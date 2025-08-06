@@ -83,21 +83,12 @@ const keywords = [
   'Минфин',
   'налоговая служба',
   'налоговое законодательство',
-  'налоговая оптимизация',
   'налоговый аудит',
-  'налоговая проверка',
   'налоговые споры',
   'налоговая ответственность',
   'налоговые санкции',
   'налоговый учет',
-  'налоговая отчетность',
-  'налоговые льготы',
-  'налоговые вычеты',
-  'налоговая политика',
-  'налоговые изменения',
-  'налоговые новости',
   'налоговый консалтинг',
-  'налоговое планирование',
 ];
 
 async function main() {
@@ -190,60 +181,68 @@ async function main() {
   console.log(`Добавлено тестовых новостей за прошлую неделю: ${testNewsCount}`);
 
   // === Добавляем новые данные ===
-  // Создаем новые данные
+  // Создаем новые данные с правильными sourceId
+  const minfinSource = allSources.find(s => s.name === 'Минфин РФ');
+  const fnsSource = allSources.find(s => s.name === 'ФНС Новости');
+  const consultantSource = allSources.find(s => s.name === 'КонсультантПлюс');
+
   const news = [
     {
       title: 'Изменения в порядке уплаты НДС с 2025 года',
       summary: 'Министерство финансов опубликовало проект изменений в порядке уплаты НДС. Основные изменения коснутся порядка оформления счетов-фактур и сроков уплаты налога.',
       sourceUrl: 'https://minfin.gov.ru/ru/press-center/',
-      sourceName: 'Министерство финансов РФ',
+      sourceName: 'Минфин РФ',
       publishedAt: new Date('2024-03-15'),
       documentRef: 'Проект Федерального закона № 123456-8',
       taxType: 'НДС',
       subject: 'Изменение порядка уплаты НДС',
       position: 'Планируется изменить сроки уплаты НДС и порядок оформления документов',
-      sourceId: allSources.find(s => s.name === 'Министерство финансов РФ')?.id,
+      sourceId: minfinSource?.id,
     },
     {
       title: 'Новые разъяснения ФНС по налогу на прибыль',
       summary: 'ФНС выпустила письмо с разъяснениями по вопросам учета расходов при расчете налога на прибыль организаций.',
       sourceUrl: 'https://www.nalog.gov.ru/rn77/news/',
-      sourceName: 'Федеральная налоговая служба',
+      sourceName: 'ФНС Новости',
       publishedAt: new Date('2024-03-14'),
       documentRef: 'Письмо ФНС России от 14.03.2024 № БС-4-11/2345@',
       taxType: 'Налог на прибыль',
       subject: 'Разъяснения по учету расходов',
       position: 'Даны разъяснения по порядку учета расходов при расчете налога на прибыль',
-      sourceId: allSources.find(s => s.name === 'Федеральная налоговая служба')?.id,
+      sourceId: fnsSource?.id,
     },
     {
       title: 'Обзор практики по НДФЛ за I квартал 2024',
       summary: 'Консультант Плюс подготовил обзор судебной практики по вопросам исчисления и уплаты НДФЛ за первый квартал 2024 года.',
       sourceUrl: 'http://www.consultant.ru/law/review/',
-      sourceName: 'Консультант Плюс',
+      sourceName: 'КонсультантПлюс',
       publishedAt: new Date('2024-03-13'),
       documentRef: 'Обзор практики от 13.03.2024',
       taxType: 'НДФЛ',
       subject: 'Обзор судебной практики',
       position: 'Представлен анализ ключевых судебных решений по НДФЛ',
-      sourceId: allSources.find(s => s.name === 'Консультант Плюс')?.id,
+      sourceId: consultantSource?.id,
     },
   ];
 
-  // Добавляем новости
+  // Добавляем новости только если sourceId найден
   for (const newsItem of news) {
-    const created = await prisma.newsItem.create({
-      data: {
-        ...newsItem,
-        keywords: {
-          connect: allKeywords
-            .filter(k => newsItem.title.toLowerCase().includes(k.text.toLowerCase()) || 
-                        newsItem.summary.toLowerCase().includes(k.text.toLowerCase()))
-            .map(k => ({ id: k.id }))
+    if (newsItem.sourceId) {
+      const created = await prisma.newsItem.create({
+        data: {
+          ...newsItem,
+          keywords: {
+            connect: allKeywords
+              .filter(k => newsItem.title.toLowerCase().includes(k.text.toLowerCase()) || 
+                          newsItem.summary.toLowerCase().includes(k.text.toLowerCase()))
+              .map(k => ({ id: k.id }))
+          }
         }
-      }
-    });
-    console.log(`Created news item: ${created.title}`);
+      });
+      console.log(`Created news item: ${created.title}`);
+    } else {
+      console.log(`Skipped news item: ${newsItem.title} - source not found`);
+    }
   }
 
   console.log('База данных успешно заполнена тестовыми данными');
