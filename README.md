@@ -14,17 +14,21 @@
 ## Быстрый старт
 
 ### 1. Клонирование репозитория
+Возможно потребуется установка GIT
+https://git-scm.com/
+
 ```bash
 git clone git@github.com:vanechk/regulatorymonitor.git
 cd regulatorymonitor
 ```
 
 ### 2. Установка зависимостей
+Возможно потребуется установка node js
+https://nodejs.org/en
+
 ```bash
 npm install
 ```
-Возможно потребуется установка node js
-https://nodejs.org/en
 
 Если не получится установить через сайт, то пишите в deepseek coder, он выдаст необходимые команды
 
