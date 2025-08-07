@@ -17,8 +17,14 @@
 Возможно потребуется установка GIT
 https://git-scm.com/
 
+Заходим в терминал, "Ctrl + `" на mac "Cmd + `"
+Либо нажимаем сочетание клавиш "Ctrl + Shift + P" и выбираем View:Toggle Terminal
+
 ```bash
 git clone git@github.com:vanechk/regulatorymonitor.git
+```
+Эта команда, если у вас папка проекта клонируется внутрь другой папки
+```bash
 cd regulatorymonitor
 ```
 
