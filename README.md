@@ -21,7 +21,7 @@ https://git-scm.com/
 Либо нажимаем сочетание клавиш "Ctrl + Shift + P" и выбираем View:Toggle Terminal
 
 ```bash
-git clone git@github.com:vanechk/regulatorymonitor.git
+git clone https://github.com/vanechk/regulatorymonitor.git
 ```
 Эта команда, если у вас папка проекта клонируется внутрь другой папки
 ```bash
