@@ -17,7 +17,7 @@
 Возможно потребуется установка GIT
 https://git-scm.com/
 
-Заходим в терминал, [Ctrl + `] на mac [Cmd + `]
+Заходим в терминал, [Ctrl + "`"] на mac [Cmd + "`"]
 Либо нажимаем сочетание клавиш "Ctrl + Shift + P" и выбираем View:Toggle Terminal
 
 ```bash
