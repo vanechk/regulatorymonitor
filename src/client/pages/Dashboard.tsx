@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient, type Keyword, type NewsItem } from '../../client/api';
-import { useToast } from '../../client/utils';
+import { apiClient, type Keyword, type NewsItem } from '../api';
+import { useToast } from '../hooks/use-toast';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
@@ -10,16 +10,11 @@ import { Separator } from '../../components/ui/separator';
 import { Skeleton } from '../../components/ui/skeleton';
 import { FilterCalendar } from '../../components/ui/filter-calendar';
 import { Badge } from '../../components/ui/badge';
-import { Filter, ChevronRight, FileText, Mail, CheckSquare, Square } from 'lucide-react';
+import { Filter, ChevronRight, FileText, Mail, CheckSquare, Square, Send } from 'lucide-react';
 import { EmailSender } from '../components/EmailSender';
 import { Alert } from '../../components/ui/alert';
-// @ts-ignore
-// import scientistBulb from '../../..//scientist-bulb.png';
-import { NewsItem as NewsItemType } from '../../types/api';
-import checkDocImg from '../../assets/check-doc.png';
+import { NewsItem as NewsItemType } from '../types/api';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui/dialog';
-import path from 'path';
-import express from 'express';
 
 // Категоризация новостей с типами
 function categorizeNews(newsItems: NewsItemType[]): Record<string, NewsItemType[]> {
@@ -157,8 +152,6 @@ export default function Dashboard() {
     },
   });
 
-
-
   // Export current news mutation
   const exportCurrentMutation = useMutation<
     { reportId: string; fileUrl: string; itemCount: number },
@@ -216,8 +209,6 @@ export default function Dashboard() {
       });
     },
   });
-
-
 
   // Effect to refetch news when filters are cleared
   useEffect(() => {
@@ -305,6 +296,40 @@ export default function Dashboard() {
     setSelectedNewsIds([]);
   };
 
+  const handleSendTelegram = () => {
+    if (selectedNewsIds.length === 0) {
+      toast({
+        title: "Нет выбранных новостей",
+        description: "Пожалуйста, выберите новости для отправки",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Получаем выбранные новости
+    const selectedNews = newsItems.filter(item => selectedNewsIds.includes(item.id));
+    
+    // Генерируем текст для Telegram
+    let telegramText = `📰 Выбранные новости (${selectedNewsIds.length})\n\n`;
+    
+    selectedNews.forEach((item, index) => {
+      telegramText += `${index + 1}. **${item.title}**\n`;
+      telegramText += `📝 ${item.summary || 'Описание недоступно'}\n`;
+      telegramText += `🏢 Источник: ${item.sourceName}\n`;
+      telegramText += `📅 ${new Date(item.publishedAt).toLocaleDateString('ru-RU')}\n`;
+      if (item.sourceUrl) {
+        telegramText += `🔗 [Читать полностью](${item.sourceUrl})\n`;
+      }
+      telegramText += '\n';
+    });
+    
+    telegramText += `\n📤 Отправлено из TaxNewsRadar\n`;
+    telegramText += `🕐 ${new Date().toLocaleString('ru-RU')}`;
+    
+    setTelegramReportText(telegramText);
+    setShowTelegramPreview(true);
+  };
+
   // Генерация текста отчёта для Telegram
   function generateTelegramReport(newsItems: NewsItemType[], dateFrom?: Date, dateTo?: Date): string {
     if (!dateFrom || !dateTo) return '';
@@ -366,6 +391,7 @@ export default function Dashboard() {
     setTelegramReportText(reportText);
     setShowTelegramPreview(true);
   };
+
   const handleSendTelegramWeek = () => {
     toast({
       title: 'Отправка в Telegram',
@@ -444,449 +470,364 @@ export default function Dashboard() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        width: '100vw',
-        background: 'linear-gradient(135deg, #1a237e 0%, #1976d2 60%, #00c6fb 100%)',
-        position: 'relative',
-        overflow: 'hidden',
-        fontFamily: 'Segoe UI, Arial, sans-serif',
-      }}
-    >
-      {/* watermark логотип, если нужен */}
-      {/* <img
-        src={vtbLogo}
-        alt="ВТБ"
-        style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          width: '40vw',
-          minWidth: 300,
-          maxWidth: 600,
-          opacity: 0.10,
-          transform: 'translate(-50%, -50%)',
-          pointerEvents: 'none',
-          zIndex: 1,
-        }}
-      /> */}
-      {/* Контентная карточка */}
-      <div
-        style={{
-          position: 'relative',
-          zIndex: 2,
-          maxWidth: 900,
-          margin: '0 auto',
-          marginTop: 64,
-          background: 'rgba(255,255,255,0.85)',
-          borderRadius: 24,
-          boxShadow: '0 8px 32px rgba(26,35,126,0.18)',
-          padding: '48px 70px 32px 70px', // увеличено слева и справа на 38px (1см)
-          minHeight: 500,
-          backdropFilter: 'blur(2px)',
-        }}
-      >
-        <header className="flex flex-col items-start mb-8">
-          <div style={{ display: 'flex', alignItems: 'flex-start', width: '100%', justifyContent: 'space-between' }}>
-            <h1
-              className="text-3xl font-bold"
-              style={{
-                color: '#2e9bfe',
-                textTransform: 'uppercase',
-                WebkitTextStroke: '2px #2e9bfe',
-                letterSpacing: 2,
-                fontSize: 36,
-                lineHeight: 1.1,
-                fontFamily: 'Arial, sans-serif',
-                flex: '1 1 auto'
-              }}
-            >
-              Мониторинг законодательства
-            </h1>
-            <div style={{ position: 'relative', width: '100%' }}>
-              <img
-                src={checkDocImg}
-                alt="Документ с галочкой"
-                style={{ width: '6cm', height: '6cm', position: 'absolute', right: 32, top: 24 }}
-              />
-            </div>
-          </div>
-          <div style={{ marginTop: 8 }}>
-            <div
-              style={{
-                fontSize: 22,
-                fontWeight: 700,
-                color: '#2e9bfe',
-                textTransform: 'uppercase',
-                WebkitTextStroke: '1.5px #2e9bfe',
-                letterSpacing: 2,
-                fontFamily: 'Arial, sans-serif',
-                lineHeight: 1.1
-              }}
-            >
-              Налоговый блок
-            </div>
-            <div style={{ display: 'flex', gap: 12, marginTop: 4, flexDirection: 'column', alignItems: 'flex-start' }}>
-              <span style={{ fontSize: 20, fontWeight: 500, color: '#2e9bfe' }}>ДУиО</span>
-              <span
-                style={{
-                  fontSize: 16,
-                  fontWeight: 700,
-                  color: '#0000cc',
-                  textTransform: 'uppercase',
-                  letterSpacing: 1,
-                  fontFamily: 'Arial, sans-serif',
-                  lineHeight: 1.1,
-                  marginTop: 16
-                }}
-              >
-                Банк ВТБ (ПАО)
-              </span>
-              <Button
-                onClick={handleFetchNews}
-                disabled={fetchNewsMutation.isPending || !!processingTaskId}
-                style={{ color: '#fff', borderColor: '#1565c0', background: '#1565c0', fontSize: 20, padding: '16px 32px', marginTop: 24 }}
-              >
-                {fetchNewsMutation.isPending ? "Загрузка..." : "Обновить новости"}
-              </Button>
-            </div>
-          </div>
-        </header>
-        <div className="space-y-6">
-          {/* Новый блок: кнопки email, telegram, excel */}
-          <div style={{ display: 'flex', flexDirection: 'row', gap: 16, alignItems: 'center', margin: '24px 0 16px 0' }}>
-            <Button
-              variant="outline"
-              onClick={handleSendEmail}
-              className="flex items-center gap-2"
-              style={{ color: '#0000cc', borderColor: '#0000cc', background: '#fff' }}
-            >
-              <Mail className="h-4 w-4" />
-              Отправить на email
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleSendTelegramDay}
-              className="flex items-center gap-2"
-              style={{ color: '#0000cc', borderColor: '#0000cc', background: '#fff' }}
-            >
-              <Mail className="h-4 w-4" />
-              Отправить в Telegram
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleExport}
-              disabled={exportCurrentMutation.isPending}
-              style={{ color: '#0000cc', borderColor: '#0000cc', background: '#fff' }}
-            >
-              {exportCurrentMutation.isPending ? "Экспорт..." : "Выгрузить в Excel"}
-            </Button>
-          </div>
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Дашборд</h1>
+          <p className="text-muted-foreground">
+            Мониторинг налоговых новостей и документов
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            onClick={handleFetchNews}
+            disabled={fetchNewsMutation.isPending || !!processingTaskId}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            {fetchNewsMutation.isPending ? "Загрузка..." : "Загрузить новости"}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleExport}
+            disabled={exportCurrentMutation.isPending}
+            className="border-green-600 text-green-600 hover:bg-green-50"
+          >
+            {exportCurrentMutation.isPending ? "Экспорт..." : "Экспорт в Excel"}
+          </Button>
+        </div>
+      </div>
 
-          {apiError && (
-            <Alert variant="destructive" className="mb-4">
-              {apiError}
-            </Alert>
-          )}
+      <Separator />
 
-          <Separator />
-
-          {/* Filters */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center" style={{ color: '#2e9bfe' }}>
-                <Filter className="mr-2 h-4 w-4" />
-                Параметры поиска
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="dateRange" className="text-white" style={{ color: '#2e9bfe' }}>Период публикации</Label>
-                    <div style={{ background: '#e3f2fd', borderRadius: 8, padding: '12px 16px', marginTop: 8 }}>
-                      <div style={{ display: 'flex', gap: '2rem', fontSize: 14 }}>
-                        <label style={{ color: '#2e9bfe', cursor: 'pointer' }}>
-                          <input
-                            type="radio"
-                            name="dateRange"
-                            checked={dateRange === 'today'}
-                            onChange={() => handleDateRange('today')}
-                          /> Сегодня
-                        </label>
-                        <label style={{ color: '#2e9bfe', cursor: 'pointer' }}>
-                          <input
-                            type="radio"
-                            name="dateRange"
-                            checked={dateRange === 'yesterday'}
-                            onChange={() => handleDateRange('yesterday')}
-                          /> Вчера
-                        </label>
-                        <label style={{ color: '#2e9bfe', cursor: 'pointer' }}>
-                          <input
-                            type="radio"
-                            name="dateRange"
-                            checked={dateRange === 'week'}
-                            onChange={() => handleDateRange('week')}
-                          /> Неделя
-                        </label>
-                        <label style={{ color: '#2e9bfe', cursor: 'pointer' }}>
-                          <input
-                            type="radio"
-                            name="dateRange"
-                            checked={dateRange === 'month'}
-                            onChange={() => handleDateRange('month')}
-                          /> Месяц
-                        </label>
-                      </div>
-                      <div style={{ marginTop: 12 }}>
-                        <FilterCalendar
-                          selectedDateFrom={dateFrom}
-                          selectedDateTo={dateTo}
-                          onDateFromSelect={(date) => { setDateFrom(date); setDateRange('custom'); }}
-                          onDateToSelect={(date) => { setDateTo(date); setDateRange('custom'); }}
-                          onRangeSelect={(from, to) => { setDateFrom(from); setDateTo(to); setDateRange('custom'); }}
-                          className="w-full mt-1"
-                        />
-                      </div>
-                    </div>
+      {/* Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center heading-primary">
+            <Filter className="mr-2 h-4 w-4" />
+            Параметры поиска
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col lg:flex-row gap-6">
+            <div className="flex-1">
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="dateRange" className="block mb-2">Период публикации</Label>
+                  <div className="flex gap-2 mt-2">
+                    <Button
+                      variant={dateRange === 'today' ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleDateRange('today')}
+                      className={dateRange === 'today' ? "" : ""}
+                    >
+                      Сегодня
+                    </Button>
+                    <Button
+                      variant={dateRange === 'yesterday' ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleDateRange('yesterday')}
+                      className={dateRange === 'yesterday' ? "" : ""}
+                    >
+                      Вчера
+                    </Button>
+                    <Button
+                      variant={dateRange === 'week' ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleDateRange('week')}
+                      className={dateRange === 'week' ? "" : ""}
+                    >
+                      Неделя
+                    </Button>
+                    <Button
+                      variant={dateRange === 'month' ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleDateRange('month')}
+                      className={dateRange === 'month' ? "" : ""}
+                    >
+                      Месяц
+                    </Button>
                   </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="sourceType" className="text-white block mb-2">
-                      Источник информации
-                    </Label>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant={sourceType === undefined ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setSourceType(undefined)}
-                        style={{ color: '#0000cc', borderColor: '#0000cc', background: '#fff' }}
-                      >
-                        Все источники
-                      </Button>
-                      <Button
-                        variant={sourceType === "website" ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setSourceType("website")}
-                        style={{ color: '#0000cc', borderColor: '#0000cc', background: '#fff' }}
-                      >
-                        Официальные сайты
-                      </Button>
-                      <Button
-                        variant={sourceType === "telegram" ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setSourceType("telegram")}
-                        style={{ color: '#0000cc', borderColor: '#0000cc', background: '#fff' }}
-                      >
-                        Telegram-каналы
-                      </Button>
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="keywords" className="text-white">Ключевые слова</Label>
-                    <Input
-                      id="keywords"
-                      value={filterKeywords}
-                      onChange={(e) => setFilterKeywords(e.target.value)}
-                      placeholder="Введите ключевые слова через запятую"
-                      className="w-full mt-1"
+                  <div className="mt-4">
+                    <FilterCalendar
+                      selectedDateFrom={dateFrom}
+                      selectedDateTo={dateTo}
+                      onDateFromSelect={(date) => { setDateFrom(date); setDateRange('custom'); }}
+                      onDateToSelect={(date) => { setDateTo(date); setDateRange('custom'); }}
+                      onRangeSelect={(from, to) => { setDateFrom(from); setDateTo(to); setDateRange('custom'); }}
+                      className="w-full"
                     />
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
 
-          {/* News Items */}
-          <div className="space-y-4">
-            {isLoadingNews ? (
-              <div className="space-y-4">
-                {[...Array(3)].map((_, i) => (
-                  <Card key={i} className="bg-white/10 backdrop-blur-lg">
-                    <CardHeader>
-                      <Skeleton className="h-4 w-3/4" />
-                    </CardHeader>
-                    <CardContent>
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-4 w-2/3 mt-2" />
-                    </CardContent>
-                  </Card>
-                ))}
               </div>
-            ) : newsItems.length === 0 ? (
-              <Card className="bg-white/10 backdrop-blur-lg">
-                <CardContent className="py-8">
-                  <div className="text-center text-white">
-                    <p>Новости не найдены</p>
-                    <p className="text-sm text-white/70 mt-1">Попробуйте изменить параметры поиска или обновить список</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold text-white">Найдено новостей: {newsItems.length}</h2>
-                  <div className="flex items-center gap-2">
+            </div>
+
+            <div className="flex-1">
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="sourceType" className="block mb-2">Источник информации</Label>
+                  <div className="flex flex-wrap gap-2 mt-2">
                     <Button
-                      variant="outline"
+                      variant={sourceType === undefined ? "default" : "outline"}
                       size="sm"
-                      onClick={handleSelectAllNews}
-                      className="flex items-center gap-2"
-                      style={{ background: '#1565c0', color: '#fff', borderColor: '#1565c0' }}
+                      onClick={() => setSourceType(undefined)}
+                      className={sourceType === undefined ? "" : ""}
                     >
-                      {selectedNewsIds.length === newsItems.length ? (
-                        <CheckSquare className="h-4 w-4" />
-                      ) : (
-                        <Square className="h-4 w-4" />
-                      )}
-                      {selectedNewsIds.length === newsItems.length ? 'Снять выделение' : 'Выбрать все'}
+                      Все источники
+                    </Button>
+                    <Button
+                      variant={sourceType === "website" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSourceType("website")}
+                      className={sourceType === "website" ? "" : ""}
+                    >
+                      Официальные сайты
+                    </Button>
+                    <Button
+                      variant={sourceType === "telegram" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSourceType("telegram")}
+                      className={sourceType === "telegram" ? "" : ""}
+                    >
+                      Telegram-каналы
                     </Button>
                   </div>
+                  <div className="mt-4">
+                    <div className="text-sm text-muted-foreground">
+                      Выберите тип источника для фильтрации новостей
+                    </div>
+                  </div>
                 </div>
-                
-                <div className="space-y-8">
-                  {Object.entries({
-                    'Нормативно-правовые акты': categorized.npa,
-                    'Письма Минфина': categorized.minfin,
-                    'Письма ФНС': categorized.fns,
-                    'СМИ': categorized.media,
-                    'Telegram': categorized.telegram,
-                    'Суды': categorized.court,
-                    'Другое': categorized.other
-                  } as Record<string, NewsItemType[]>).map(([cat, items]) =>
-                    items.length > 0 && (
-                      <div key={cat}>
-                        <h3 className="text-2xl font-bold text-blue-900 mb-4">{cat}</h3>
-                        <div className="space-y-4">
-                          {items.map((item: NewsItemType) => (
-                            <Card 
-                              key={item.id} 
-                              className={`transition-colors bg-white/10 backdrop-blur-lg ${
-                                selectedNewsIds.includes(item.id) ? 'ring-2 ring-blue-400 bg-blue-900/20' : ''
-                              }`}
-                            >
-                              <CardHeader className="pb-3">
-                                <div className="flex justify-between items-start gap-3">
-                                  <div className="flex items-start gap-3 flex-1">
-                                    <button
-                                      onClick={() => handleSelectNews(item.id)}
-                                      className="mt-1 flex-shrink-0"
-                                    >
-                                      {selectedNewsIds.includes(item.id) ? (
-                                        <CheckSquare className="h-5 w-5 text-blue-400" />
-                                      ) : (
-                                        <Square className="h-5 w-5 text-gray-400 hover:text-white" />
-                                      )}
-                                    </button>
-                                    <div className="flex-1">
-                                      <CardTitle className="text-lg" style={{ fontSize: 12, fontWeight: 600, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'unset' }}>
-                                        <a
-                                          href={item.sourceUrl}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          style={{ color: '#1a237e', fontWeight: 600, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'unset', display: 'inline' }}
-                                        >
-                                          {item.title}
-                                        </a>
-                                      </CardTitle>
-                                    </div>
-                                  </div>
-                                </div>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="space-y-3">
-                                  <p style={{ color: '#2e9bfe', fontSize: 11 }}>
-                                    {item.summary}
-                                  </p>
-                                  {item.content && (
-                                    <div style={{ color: '#2e9bfe', fontSize: 14, marginTop: 6, whiteSpace: 'pre-line' }}>
-                                      {item.content}
-                                    </div>
-                                  )}
-                                  {(item.taxType || item.position || item.documentRef) && (
-                                    <div className="grid gap-2 text-sm text-white/70">
-                                      {item.taxType && (
-                                        <div>
-                                          <span className="font-medium">Тип налога:</span> {item.taxType}
-                                        </div>
-                                      )}
-                                      {item.position && (
-                                        <div>
-                                          <span className="font-medium">Позиция:</span> {item.position}
-                                        </div>
-                                      )}
-                                      {item.documentRef && (
-                                        <div>
-                                          <span className="font-medium">Документ:</span> {item.documentRef}
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-                                  <div
-                                    style={{
-                                      marginTop: 12,
-                                      color: '#2e9bfe',
-                                      fontStyle: 'italic',
-                                      fontWeight: 400,
-                                      fontSize: 15,
-                                    }}
-                                  >
-                                    #{item.sourceName}{item.taxType ? `, ${item.taxType}` : ''}
-                                  </div>
-                                  {item.title.toLowerCase().includes('законопроект') && (
-                                    <div>
-                                      <span className="font-medium">Статус законопроекта:</span> {extractLawStatus(item.title + ' ' + (item.summary || ''))?.status}
-                                    </div>
-                                  )}
-                                  {(['Госдума', 'Нормативно-правовые акты'].includes(cat)) && (() => {
-                                    const statusObj = extractLawStatus(item.title + ' ' + (item.summary || ''));
-                                    return statusObj ? (
-                                      <Badge style={{ backgroundColor: statusObj.color === 'green' ? '#4caf50' : statusObj.color === 'red' ? '#f44336' : '#ffeb3b', color: statusObj.color === 'yellow' ? '#333' : '#fff', marginBottom: 8 }}>
-                                        {statusObj.status}
-                                      </Badge>
-                                    ) : null;
-                                  })()}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      </div>
-                    )
-                  )}
+                <div>
+                  <Label htmlFor="keywords" className="block mb-2">Фильтр по ключевым словам</Label>
+                  <Input
+                    id="keywords"
+                    value={filterKeywords}
+                    onChange={(e) => setFilterKeywords(e.target.value)}
+                    placeholder="Введите ключевые слова через запятую"
+                    className="w-full mt-1"
+                  />
                 </div>
-              </>
-            )}
+              </div>
+            </div>
           </div>
+        </CardContent>
+      </Card>
 
-          {/* Email Sender Modal */}
-          {showEmailSender && (
-            <EmailSender
-              selectedNewsIds={selectedNewsIds}
-              onClose={() => setShowEmailSender(false)}
-              onSuccess={handleEmailSuccess}
-            />
+      {apiError && (
+        <Alert variant="destructive" className="mb-4">
+          {apiError}
+        </Alert>
+      )}
+
+      {/* News Items */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">
+            Результаты ({newsItems.length})
+          </h2>
+          {newsItems.length > 0 && (
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSelectAllNews}
+                className="flex items-center gap-2 border-purple-600 text-purple-600 hover:bg-purple-50"
+              >
+                {selectedNewsIds.length === newsItems.length ? (
+                  <CheckSquare className="h-4 w-4" />
+                ) : (
+                  <Square className="h-4 w-4" />
+                )}
+                {selectedNewsIds.length === newsItems.length ? 'Снять выделение' : 'Выбрать все'}
+              </Button>
+              {selectedNewsIds.length > 0 && (
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={handleSendEmail}
+                    className="flex items-center gap-2 border-orange-600 text-orange-600 hover:bg-orange-50"
+                  >
+                    <Mail className="h-4 w-4" />
+                    Отправить на email ({selectedNewsIds.length})
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    onClick={handleSendTelegram}
+                    className="flex items-center gap-2 border-blue-600 text-blue-600 hover:bg-blue-50"
+                  >
+                    <Send className="h-4 w-4" />
+                    Отправить в Telegram ({selectedNewsIds.length})
+                  </Button>
+                </div>
+              )}
+            </div>
           )}
         </div>
+
+        {isLoadingNews ? (
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i}>
+                <CardHeader>
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-4 w-1/4 mt-2" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full mt-2" />
+                  <Skeleton className="h-4 w-3/4 mt-2" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : newsItems.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center p-6">
+              <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium">Нет новостей</h3>
+              <p className="text-sm text-muted-foreground text-center mt-1">
+                Попробуйте изменить фильтры или нажмите "Загрузить новости"
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-8">
+            {Object.entries({
+              'Нормативно-правовые акты': categorized.npa,
+              'Письма Минфина': categorized.minfin,
+              'Письма ФНС': categorized.fns,
+              'СМИ': categorized.media,
+              'Telegram': categorized.telegram,
+              'Суды': categorized.court,
+              'Другое': categorized.other
+            } as Record<string, NewsItemType[]>).map(([cat, items]) =>
+              items.length > 0 && (
+                <div key={cat}>
+                  <h3 className="text-2xl font-bold mb-4">{cat}</h3>
+                  <div className="space-y-4">
+                    {items.map((item: NewsItemType) => (
+                      <Card 
+                        key={item.id} 
+                        className={`transition-colors ${
+                          selectedNewsIds.includes(item.id) ? 'ring-2 ring-blue-400 bg-blue-50' : ''
+                        }`}
+                      >
+                        <CardHeader className="pb-3">
+                          <div className="flex justify-between items-start gap-3">
+                            <div className="flex items-start gap-3 flex-1">
+                              <button
+                                onClick={() => handleSelectNews(item.id)}
+                                className="mt-1 flex-shrink-0"
+                              >
+                                {selectedNewsIds.includes(item.id) ? (
+                                  <CheckSquare className="h-5 w-5 text-blue-600" />
+                                ) : (
+                                  <Square className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                                )}
+                              </button>
+                              <div className="flex-1">
+                                <CardTitle className="text-lg">
+                                  <a
+                                    href={item.sourceUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:text-blue-800"
+                                  >
+                                    {item.title}
+                                  </a>
+                                </CardTitle>
+                                <CardDescription>
+                                  Источник: {item.sourceName}
+                                  {item.documentRef && ` | ${item.documentRef}`}
+                                  {item.taxType && ` | ${item.taxType}`}
+                                </CardDescription>
+                              </div>
+                            </div>
+                            <Badge variant="outline">
+                              {new Date(item.publishedAt).toLocaleDateString("ru-RU")}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-3">
+                            <p className="text-sm text-gray-600">
+                              {item.summary}
+                            </p>
+                            {item.content && (
+                              <div className="text-sm text-gray-700 mt-2">
+                                {item.content}
+                              </div>
+                            )}
+                            {(item.taxType || item.position || item.documentRef) && (
+                              <div className="grid gap-2 text-sm text-gray-500">
+                                {item.taxType && (
+                                  <div>
+                                    <span className="font-medium">Тип налога:</span> {item.taxType}
+                                  </div>
+                                )}
+                                {item.position && (
+                                  <div>
+                                    <span className="font-medium">Позиция:</span> {item.position}
+                                  </div>
+                                )}
+                                {item.documentRef && (
+                                  <div>
+                                    <span className="font-medium">Документ:</span> {item.documentRef}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {item.title.toLowerCase().includes('законопроект') && (
+                              <div>
+                                <span className="font-medium">Статус законопроекта:</span> {extractLawStatus(item.title + ' ' + (item.summary || ''))?.status}
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Email Sender Modal */}
+      {showEmailSender && (
+        <EmailSender
+          selectedNewsIds={selectedNewsIds}
+          onClose={() => setShowEmailSender(false)}
+          onSuccess={handleEmailSuccess}
+        />
+      )}
+
+      {/* Telegram Preview Dialog */}
       <Dialog open={showTelegramPreview} onOpenChange={setShowTelegramPreview}>
-        <DialogContent style={{ maxWidth: 600 }}>
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Предпросмотр отчёта для Telegram</DialogTitle>
           </DialogHeader>
-          <pre style={{ whiteSpace: 'pre-wrap', fontSize: 15, background: '#f5f7fa', padding: 16, borderRadius: 8, maxHeight: 350, overflowY: 'auto' }}>{telegramReportText}</pre>
+          <pre className="whitespace-pre-wrap text-sm bg-gray-50 p-4 rounded-lg max-h-96 overflow-y-auto">
+            {telegramReportText}
+          </pre>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowTelegramPreview(false)}>Отмена</Button>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowTelegramPreview(false)}
+              className="border-gray-600 text-gray-600 hover:bg-gray-50"
+            >
+              Отмена
+            </Button>
             <Button
-              style={{ background: '#1565c0', color: '#fff', borderColor: '#1565c0' }}
               onClick={() => {
                 sendTelegramMutation.mutate({ text: telegramReportText });
                 setShowTelegramPreview(false);
               }}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
             >
               Отправить в Telegram
             </Button>

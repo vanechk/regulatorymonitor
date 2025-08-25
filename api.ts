@@ -129,8 +129,19 @@ export async function listKeywords() {
 }
 
 export async function addKeyword({ text }: { text: string }) {
+  // Проверяем, есть ли уже такое ключевое слово (точное совпадение)
+  const existingKeyword = await db.keyword.findFirst({
+    where: {
+      text: text.trim()
+    }
+  });
+
+  if (existingKeyword) {
+    throw new Error(`Ключевое слово "${text.trim()}" уже существует`);
+  }
+
   return await db.keyword.create({
-    data: { text },
+    data: { text: text.trim() },
   });
 }
 

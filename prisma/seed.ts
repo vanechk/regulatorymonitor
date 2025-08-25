@@ -60,6 +60,7 @@ const sources = [
   { name: 'PwC Tax', url: 'https://t.me/pwc_tax', type: 'telegram' },
   { name: 'Tax Expert', url: 'https://t.me/tax_expert', type: 'telegram' },
   { name: 'Налоговый консультант', url: 'https://t.me/nalog_consultant', type: 'telegram' },
+  { name: 'Центральный банк РФ', url: 'https://cbr.ru/press/', type: 'website' },
 ];
 
 const keywords = [
@@ -89,6 +90,8 @@ const keywords = [
   'налоговые санкции',
   'налоговый учет',
   'налоговый консалтинг',
+  'ЦБ РФ',
+  'Центральный банк',
 ];
 
 async function main() {

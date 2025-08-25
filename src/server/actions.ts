@@ -21,8 +21,27 @@ export async function getTaskStatus(taskId: string): Promise<{ status: string }>
 
 // Функция для отправки email
 export async function sendEmail(to: string, subject: string, content: string): Promise<void> {
-  // Здесь должна быть реализация отправки email
-  console.log(`Sending email to ${to}: ${subject}`);
+  try {
+    console.log(`📧 Начинаем отправку email на ${to}: ${subject}`);
+    
+    // Импортируем EmailService
+    const { EmailService } = await import('./utils/email');
+    
+    // Создаем содержимое email
+    const emailContent = {
+      to,
+      subject,
+      html: content
+    };
+    
+    // Отправляем email
+    await EmailService.sendEmail(emailContent);
+    
+    console.log(`✅ Email успешно отправлен на ${to}`);
+  } catch (error) {
+    console.error(`❌ Ошибка отправки email на ${to}:`, error);
+    throw new Error(`Не удалось отправить email: ${error.message}`);
+  }
 }
 
 // Простое хранилище файлов в памяти
