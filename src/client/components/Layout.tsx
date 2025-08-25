@@ -17,11 +17,24 @@ import {
 } from '../../components/ui/dialog';
 
 function Layout({ children }: { children: React.ReactNode }) {
+  console.log('🔍 Layout: Компонент начал рендериться');
+  
   const location = useLocation();
+  console.log('🔍 Layout: useLocation() вызван, pathname:', location.pathname);
+  
   const navigate = useNavigate();
+  console.log('🔍 Layout: useNavigate() вызван');
+  
+  console.log('🔍 Layout: Пытаюсь вызвать useAuth()...');
   const { user, logout } = useAuth();
+  console.log('🔍 Layout: useAuth() успешно вызван, user:', user);
+  
+  console.log('🔍 Layout: Пытаюсь вызвать useTheme()...');
   const { theme } = useTheme();
+  console.log('🔍 Layout: useTheme() успешно вызван, theme:', theme);
+  
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  console.log('🔍 Layout: useState() успешно вызван');
 
   // Слушаем изменения темы для принудительного обновления стилей
   useEffect(() => {
@@ -67,6 +80,8 @@ function Layout({ children }: { children: React.ReactNode }) {
     setShowLogoutDialog(false);
   };
 
+  console.log('🔍 Layout: Начинаю рендерить JSX');
+  
   return (
     <div className="flex min-h-screen main-container">
       <aside className="w-64 sidebar p-4 flex flex-col justify-between">

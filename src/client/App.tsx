@@ -2,18 +2,18 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider, useAuth } from '../contexts/AuthContext';
-import { ThemeProvider } from '../contexts/ThemeContext';
-import Layout from './components/Layout';
-import Dashboard from './pages/Dashboard';
-import Settings from './pages/Settings';
-import Reports from './pages/Reports';
-import Calendar from './pages/Calendar';
-import { ReportGenerator } from './components/ReportGenerator';
-import { Auth } from '../pages/Auth';
-import { VerifyEmail } from '../pages/VerifyEmail';
-import Profile from './pages/Profile';
-import routerConfig from './router-config';
+import { AuthProvider, useAuth } from '../contexts/AuthContext.tsx';
+import { ThemeProvider } from '../contexts/ThemeContext.tsx';
+import Layout from './components/Layout.tsx';
+import Dashboard from './pages/Dashboard.tsx';
+import Settings from './pages/Settings.tsx';
+import Reports from './pages/Reports.tsx';
+import Calendar from './pages/Calendar.tsx';
+import { ReportGenerator } from './components/ReportGenerator.tsx';
+import { Auth } from '../pages/Auth.tsx';
+import { VerifyEmail } from '../pages/VerifyEmail.tsx';
+import Profile from './pages/Profile.tsx';
+import routerConfig from './router-config.ts';
 
 // Создаем QueryClient
 const queryClient = new QueryClient({
@@ -45,7 +45,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
+  console.log('🔍 AppRoutes: Компонент начал рендериться');
   const { user, updateProfile, changePassword, deleteAccount } = useAuth();
+  console.log('🔍 AppRoutes: useAuth() успешно вызван, user:', user);
 
   return (
     <Routes>
@@ -142,6 +144,8 @@ function AppRoutes() {
 }
 
 function App() {
+  console.log('🔍 App: Компонент начал рендериться');
+  
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>

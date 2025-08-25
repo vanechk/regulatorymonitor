@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient, type Keyword, type NewsItem } from '../api';
-import { useToast } from '../utils';
+import { useToast } from '../hooks/use-toast';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
@@ -13,7 +13,7 @@ import { Badge } from '../../components/ui/badge';
 import { Filter, ChevronRight, FileText, Mail, CheckSquare, Square, Send } from 'lucide-react';
 import { EmailSender } from '../components/EmailSender';
 import { Alert } from '../../components/ui/alert';
-import { NewsItem as NewsItemType } from '../../types/api';
+import { NewsItem as NewsItemType } from '../types/api';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui/dialog';
 
 // Категоризация новостей с типами

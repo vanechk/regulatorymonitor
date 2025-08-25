@@ -29,10 +29,16 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function useAuth() {
+  console.log('🔍 useAuth: Хук вызван');
   const context = useContext(AuthContext);
+  console.log('🔍 useAuth: useContext(AuthContext) вернул:', context);
+  
   if (context === undefined) {
+    console.error('❌ useAuth: Контекст не определен! useAuth должен использоваться внутри AuthProvider');
     throw new Error('useAuth must be used within an AuthProvider');
   }
+  
+  console.log('✅ useAuth: Контекст успешно получен');
   return context;
 }
 
@@ -41,10 +47,14 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
+  console.log('🔍 AuthProvider: Компонент начал рендериться');
+  
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [isLoading, setIsLoading] = useState(true); // Начинаем с true
   const [error, setError] = useState<string | null>(null);
+  
+  console.log('🔍 AuthProvider: Состояние инициализировано:', { user, token, isLoading, error });
 
   // Проверяем токен при загрузке
   useEffect(() => {
@@ -405,6 +415,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     error,
   };
 
+  console.log('🔍 AuthProvider: Рендерю AuthContext.Provider с значением:', value);
+  
   return (
     <AuthContext.Provider value={value}>
       {children}
