@@ -1,0 +1,205 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  MODERATOR
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+model User {
+  id                String     @id @default(uuid())
+  username          String     @unique
+  email             String     @unique
+  password          String
+  firstName         String?
+  lastName          String?
+  region            String?
+  themeColor        String?    @default("220 85% 45%") // RGB цвет темы по умолчанию
+  themeMode         String     @default("light") // light, dark
+  role              UserRole   @default(USER)
+  status            UserStatus @default(ACTIVE)
+  isVerified        Boolean    @default(false) // Статус подтверждения email
+  verificationToken String?    @db.VarChar(500) // Токен для подтверждения email
+  lastLoginAt       DateTime?  // Время последнего входа
+  loginAttempts     Int        @default(0) // Количество неудачных попыток входа
+  lockedUntil       DateTime?  // Время блокировки аккаунта
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  // Связи
+  refreshTokens     RefreshToken[]
+  userActions       UserAction[]
+  emailSettings     EmailSettings?
+  telegramSettings  TelegramSettings?
+  reports          Report[]
+
+  @@map("users")
+}
+
+// Временные пользователи, ожидающие подтверждения email
+model PendingUser {
+  id                String   @id @default(uuid())
+  username          String   @unique
+  email             String   @unique
+  password          String
+  firstName         String?
+  lastName          String?
+  region            String?
+  themeColor        String?  @default("220 85%")
+  themeMode         String   @default("light")
+  verificationToken String   @unique @db.VarChar(500) // Токен для подтверждения email
+  expiresAt         DateTime // Время истечения токена (24 часа)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("pending_users")
+}
+
+// Refresh токены для обновления access токенов
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique @db.VarChar(500) // Увеличиваем размер для JWT токенов
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  isRevoked Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("refresh_tokens")
+}
+
+// Логирование действий пользователей
+model UserAction {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action      String   // Тип действия (LOGIN, LOGOUT, CREATE_SOURCE, etc.)
+  details     String?  // Детали действия в JSON формате
+  ipAddress   String?  // IP адрес пользователя
+  userAgent   String?  // User-Agent браузера
+  createdAt   DateTime @default(now())
+
+  @@map("user_actions")
+}
+
+model Source {
+  id        String     @id @default(uuid())
+  name      String
+  url       String     @unique
+  type      String
+  isEnabled Boolean    @default(true)
+  newsItems NewsItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@map("sources")
+}
+
+model Keyword {
+  id        String   @id @default(uuid())
+  text      String   @unique
+  newsItems NewsItem[] @relation("NewsItemKeywords")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("keywords")
+}
+
+model NewsItem {
+  id          String   @id @default(uuid())
+  title       String
+  summary     String @db.Text
+  sourceUrl   String
+  sourceName  String
+  publishedAt DateTime
+  documentRef String?
+  taxType     String?
+  subject     String?
+  position    String?
+  source      Source?   @relation(fields: [sourceId], references: [id])
+  sourceId    String?
+  keywords    Keyword[] @relation("NewsItemKeywords")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("news_items")
+}
+
+model Report {
+  id          String   @id @default(uuid())
+  name        String
+  userId      String   // ID пользователя, создавшего отчет
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  dateFrom    DateTime
+  dateTo      DateTime
+  itemCount   Int
+  fileUrl     String
+  keywordsUsed String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("reports")
+}
+
+model EmailSettings {
+  id              String   @id @default("default")
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email           String
+  isEnabled       Boolean  @default(false)
+  summaryFrequency String  @default("DAILY")
+  smtpHost        String?  // SMTP сервер
+  smtpPort        Int?     // SMTP порт
+  smtpUser        String?  // SMTP пользователь
+  smtpPass        String?  // SMTP пароль
+  smtpSecure      Boolean  @default(true) // Использовать SSL/TLS
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("email_settings")
+}
+
+model TelegramSettings {
+  id              String   @id @default("default")
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  botToken        String?  // Токен бота
+  chatId          String?  // ID чата для отправки
+  isEnabled       Boolean  @default(false)
+  summaryFrequency String  @default("DAILY")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("telegram_settings")
+}
+
+// Настройки системы
+model SystemSettings {
+  id          String   @id @default("main")
+  smtpHost    String?  // Глобальный SMTP сервер
+  smtpPort    Int?     // Глобальный SMTP порт
+  smtpUser    String?  // Глобальный SMTP пользователь
+  smtpPass    String?  // Глобальный SMTP пароль
+  smtpSecure  Boolean  @default(true)
+  telegramBotToken String? // Глобальный токен Telegram бота
+  maxLoginAttempts Int @default(5) // Максимальное количество попыток входа
+  lockoutDuration Int @default(15) // Длительность блокировки в минутах
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("system_settings")
+} 

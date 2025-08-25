@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест системы тем</title>
+    <style>
+        :root {
+            --primary: hsl(220 85% 45%);
+            --primary-light: hsl(220 85% 65%);
+            --primary-lighter: hsl(220 85% 85%);
+            --primary-dark: hsl(220 85% 25%);
+            --primary-hover: hsl(220 85% 35%);
+            --background: hsl(220 33% 98%);
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: linear-gradient(135deg, hsl(var(--primary-lighter)) 0%, hsl(var(--primary-light)) 50%, hsl(var(--primary)) 100%);
+            min-height: 100vh;
+        }
+        
+        .test-button {
+            background-color: hsl(var(--primary));
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 16px;
+        }
+        
+        .test-button:hover {
+            background-color: hsl(var(--primary-hover));
+        }
+        
+        .test-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 2px solid hsl(var(--primary));
+            box-shadow: 0 4px 20px hsl(var(--primary) / 0.1);
+        }
+        
+        .test-heading {
+            color: hsl(var(--primary));
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        
+        .color-picker {
+            margin: 20px 0;
+        }
+        
+        .color-picker input {
+            margin: 5px;
+            padding: 5px;
+        }
+        
+        .debug-info {
+            background: rgba(0,0,0,0.1);
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1 class="test-heading">Тест системы тем</h1>
+    
+    <div class="test-card">
+        <h2>Выберите цвет темы:</h2>
+        <div class="color-picker">
+            <button class="test-button" onclick="setThemeColor('0 100% 50%')">Красный</button>
+            <button class="test-button" onclick="setThemeColor('120 100% 50%')">Зеленый</button>
+            <button class="test-button" onclick="setThemeColor('240 100% 50%')">Синий</button>
+            <button class="test-button" onclick="setThemeColor('300 100% 50%')">Розовый</button>
+            <button class="test-button" onclick="setThemeColor('45 100% 50%')">Желтый</button>
+            <button class="test-button" onclick="setThemeColor('280 100% 50%')">Фиолетовый</button>
+        </div>
+        
+        <div>
+            <label>HSL значение: <input type="text" id="hslInput" value="220 85% 45%" onchange="setThemeColor(this.value)"></label>
+        </div>
+    </div>
+    
+    <div class="test-card">
+        <h3>Тестовые элементы:</h3>
+        <button class="test-button">Кнопка с цветом темы</button>
+        <button class="test-button">Еще кнопка</button>
+        <p>Этот текст должен быть на градиентном фоне с выбранным цветом.</p>
+    </div>
+    
+    <div class="debug-info">
+        <h4>Отладочная информация:</h4>
+        <div id="debugOutput"></div>
+    </div>
+    
+    <script>
+        function setThemeColor(color) {
+            console.log('Установка цвета темы:', color);
+            
+            // Обновляем CSS переменные
+            const root = document.documentElement;
+            root.style.setProperty('--primary', `hsl(${color})`);
+            
+            // Вычисляем дополнительные цвета
+            const [h, s, l] = color.split(' ').map(Number);
+            root.style.setProperty('--primary-light', `hsl(${h}, ${s}%, ${Math.min(l + 20, 95)}%)`);
+            root.style.setProperty('--primary-lighter', `hsl(${h}, ${s}%, ${Math.min(l + 40, 98)}%)`);
+            root.style.setProperty('--primary-dark', `hsl(${h}, ${s}%, ${Math.max(l - 20, 5)}%)`);
+            root.style.setProperty('--primary-hover', `hsl(${h}, ${s}%, ${Math.max(l - 10, 5)}%)`);
+            
+            // Обновляем отладочную информацию
+            updateDebugInfo();
+        }
+        
+        function updateDebugInfo() {
+            const root = document.documentElement;
+            const debugOutput = document.getElementById('debugOutput');
+            
+            const info = {
+                '--primary': root.style.getPropertyValue('--primary'),
+                '--primary-light': root.style.getPropertyValue('--primary-light'),
+                '--primary-lighter': root.style.getPropertyValue('--primary-lighter'),
+                '--primary-dark': root.style.getPropertyValue('--primary-dark'),
+                '--primary-hover': root.style.getPropertyValue('--primary-hover'),
+                'computed-primary': getComputedStyle(document.body).getPropertyValue('--primary')
+            };
+            
+            debugOutput.innerHTML = Object.entries(info)
+                .map(([key, value]) => `<div><strong>${key}:</strong> ${value}</div>`)
+                .join('');
+        }
+        
+        // Инициализация
+        updateDebugInfo();
+        
+        // Обновляем при изменении input
+        document.getElementById('hslInput').addEventListener('input', function() {
+            setThemeColor(this.value);
+        });
+    </script>
+</body>
+</html>

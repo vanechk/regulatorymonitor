@@ -1,0 +1,128 @@
+@import '../../theme.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  
+  /* Основные цвета темы - будут динамически обновляться ThemeContext */
+  --primary: 220 85% 45%; /* Базовая тема по умолчанию */
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 220 85% 45%; /* Базовая тема по умолчанию */
+  --radius: 0.5rem;
+  
+  /* Дополнительные цвета темы - будут динамически обновляться ThemeContext */
+  --primary-light: 220 85% 65%;
+  --primary-lighter: 220 85% 85%;
+  --primary-dark: 220 85% 25%;
+  --primary-darker: 220 85% 5%;
+  --primary-hover: 220 85% 35%;
+  --accent-hover: 220 85% 35%;
+  --focus: 220 85% 45%;
+  --selection: 220 85% 75%;
+}
+
+.dark {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+  --card: 222.2 84% 4.9%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+  
+  /* Основные цвета темы - будут динамически обновляться ThemeContext */
+  --primary: 220 85% 45%; /* Базовая тема по умолчанию */
+  --primary-foreground: 222.2 47.4% 11.2%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 220 85% 45%; /* Базовая тема по умолчанию */
+  
+  /* Дополнительные цвета темы - будут динамически обновляться ThemeContext */
+  --primary-light: 220 85% 65%;
+  --primary-lighter: 220 85% 85%;
+  --primary-dark: 220 85% 25%;
+  --primary-darker: 220 85% 5%;
+  --primary-hover: 220 85% 35%;
+  --accent-hover: 220 85% 35%;
+  --focus: 220 85% 45%;
+  --selection: 220 85% 75%;
+}
+
+body {
+  @apply bg-background text-foreground;
+}
+
+/* Дополнительные стили для элементов интерфейса */
+@layer components {
+  /* Основной контейнер с градиентным фоном */
+  .main-container {
+    background: linear-gradient(135deg, hsl(var(--primary-lighter) / 0.1) 0%, hsl(var(--background)) 100%);
+    min-height: 100vh;
+  }
+  
+  /* Боковая панель с акцентным цветом */
+  .sidebar {
+    background: linear-gradient(180deg, hsl(var(--primary) / 0.05) 0%, hsl(var(--card)) 100%);
+    border-right: 1px solid hsl(var(--primary) / 0.1);
+  }
+  
+  /* Заголовки с цветом темы */
+  .heading-primary {
+    color: hsl(var(--primary));
+  }
+  
+  .heading-secondary {
+    color: hsl(var(--primary-dark));
+  }
+  
+  /* Карточки с hover эффектами */
+  .card-hover {
+    transition: all 0.2s ease;
+  }
+  
+  .card-hover:hover {
+    border-color: hsl(var(--primary) / 0.3);
+    box-shadow: 0 4px 20px hsl(var(--primary) / 0.1);
+  }
+  
+  /* Навигационные ссылки */
+  .nav-link {
+    transition: all 0.2s ease;
+  }
+  
+  .nav-link:hover {
+    background-color: hsl(var(--primary) / 0.1);
+    color: hsl(var(--primary));
+  }
+  
+  .nav-link.active {
+    background-color: hsl(var(--primary) / 0.2);
+    color: hsl(var(--primary));
+    border-left: 3px solid hsl(var(--primary));
+  }
+} 
