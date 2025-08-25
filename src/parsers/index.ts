@@ -4,6 +4,7 @@ import { parseConsultantPlus } from './consultant-plus';
 import { parseRIA } from './ria';
 import { parseVedomosti } from './vedomosti';
 import { parseTelegramChannel } from './telegram';
+import { parseCBR } from './cbr';
 import axios, { AxiosRequestConfig } from 'axios';
 import * as cheerio from 'cheerio';
 
@@ -32,6 +33,7 @@ const parserMapping = [
   { keywords: ['ria.ru', 'риа'], parser: parseRIA },
   { keywords: ['vedomosti', 'ведомости'], parser: parseVedomosti },
   { keywords: ['t.me', 'telegram'], parser: parseTelegramChannel },
+  { keywords: ['cbr.ru', 'цб', 'центральный банк'], parser: parseCBR },
 ];
 
 // Функция для выбора парсера на основе имени и URL источника
@@ -170,6 +172,8 @@ export async function requestModel(url: string, keywords: string[], sourceName: 
     return await parseRIA(url, keywords);
   } else if (urlLower.includes('vedomosti.ru') || sourceNameLower.includes('ведомости')) {
     return await parseVedomosti(url, keywords);
+  } else if (urlLower.includes('cbr.ru') || sourceNameLower.includes('цб') || sourceNameLower.includes('центральный банк')) {
+    return await parseCBR(url, keywords);
   } else if (urlLower.includes('t.me') || urlLower.includes('telegram') || sourceNameLower.includes('telegram')) {
     return await parseTelegramChannel(url, keywords);
   } else {

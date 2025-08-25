@@ -51,13 +51,17 @@ export function ProductionCalendar({
   };
 
   const getDayClassName = (day: CalendarDay) => {
+    const isCurrentMonth = isSameMonth(day.date, currentMonth);
+    
     return cn(
       buttonVariants({ variant: "ghost" }),
       "h-9 w-9 p-0 font-normal relative",
       {
+        // Дни вне текущего месяца
+        "text-muted-foreground opacity-50 cursor-not-allowed": !isCurrentMonth,
+        
         // Текущий месяц
-        "text-foreground": isSameMonth(day.date, currentMonth),
-        "text-muted-foreground": !isSameMonth(day.date, currentMonth),
+        "text-foreground": isCurrentMonth,
         
         // Выбранная дата
         "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground": 
@@ -65,19 +69,19 @@ export function ProductionCalendar({
         
         // Рабочие дни
         "bg-green-50 text-green-700 hover:bg-green-100": 
-          day.isWorkingDay && !day.isTransferred && isSameMonth(day.date, currentMonth),
+          day.isWorkingDay && !day.isTransferred && isCurrentMonth,
         
         // Перенесенные рабочие дни
         "bg-blue-50 text-blue-700 hover:bg-blue-100 border-2 border-blue-300": 
-          day.isTransferred && isSameMonth(day.date, currentMonth),
+          day.isTransferred && isCurrentMonth,
         
         // Праздничные дни
         "bg-red-50 text-red-700 hover:bg-red-100": 
-          day.isHoliday && isSameMonth(day.date, currentMonth),
+          day.isHoliday && isCurrentMonth,
         
         // Выходные дни
         "bg-gray-50 text-gray-500 hover:bg-gray-100": 
-          day.isWeekend && !day.isHoliday && isSameMonth(day.date, currentMonth),
+          day.isWeekend && !day.isHoliday && isCurrentMonth,
       }
     );
   };
@@ -171,24 +175,25 @@ export function ProductionCalendar({
             <div>Вс</div>
           </div>
 
-          {/* Calendar days */}
-          <div className="grid grid-cols-7 gap-1">
-            {calendarDays.map((day, index) => (
-              <button
-                key={index}
-                onClick={() => handleDateClick(day)}
-                className={getDayClassName(day)}
-                title={getDayTooltip(day)}
-              >
-                <span className="text-xs">
-                  {format(day.date, "d")}
-                </span>
-                {day.isTransferred && (
-                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full" />
-                )}
-              </button>
-            ))}
-          </div>
+                  {/* Calendar days */}
+        <div className="grid grid-cols-7 gap-1">
+          {calendarDays.map((day, index) => (
+            <button
+              key={index}
+              onClick={() => handleDateClick(day)}
+              className={getDayClassName(day)}
+              title={getDayTooltip(day)}
+              disabled={!isSameMonth(day.date, currentMonth)}
+            >
+              <span className="text-xs">
+                {format(day.date, "d")}
+              </span>
+              {day.isTransferred && (
+                <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full" />
+              )}
+            </button>
+          ))}
+        </div>
         </div>
 
         {/* Legend */}
