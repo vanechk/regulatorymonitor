@@ -1,0 +1,12 @@
+{
+  "vlad.shkoda.2017@mail.ru": {
+    "id": "a335b1cd-2b52-45cd-8a4d-75ff7d5ae650",
+    "username": "aaaaaa",
+    "email": "vlad.shkoda.2017@mail.ru",
+    "hashedPassword": "$2b$10$Q05y53fTb0YGvb05iZJuMenR44eQVfFaj39sI8Bj/RIdodrJ4OMgO",
+    "isVerified": true,
+    "createdAt": "2025-08-11T17:17:55.308Z",
+    "verificationToken": "1812f4513e4d58113e7289a53925b62f5e69f829cd9959cf83d11b5cbd822fde",
+    "verifiedAt": "2025-08-11T17:18:03.840Z"
+  }
+}
