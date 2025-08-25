@@ -1,5 +1,5 @@
 // Производственный календарь России 2025 года
-// Составлен по официальному календарю (см. изображение)
+// Составлен по официальному календарю
 
 import { startOfWeek, endOfWeek, addDays } from "date-fns";
 
@@ -13,8 +13,7 @@ export interface CalendarDay {
   transferredFrom?: Date;
 }
 
-// Праздничные и перенесённые выходные дни 2025 года
-// Красные дни с картинки
+// Праздничные дни 2025 года
 const HOLIDAYS_2025 = [
   // Январь
   '2025-01-01','2025-01-02','2025-01-03','2025-01-04','2025-01-05','2025-01-06','2025-01-07','2025-01-08',
@@ -32,9 +31,23 @@ const HOLIDAYS_2025 = [
   // Декабрь — только стандартные выходные
 ];
 
-// Переносы рабочих дней (пример: если суббота рабочая)
+// Переносы рабочих дней 2025 года
 const TRANSFERS_2025 = [
-  // В 2025 году официальных переносов рабочих дней нет (по картинке)
+  {
+    from: '2025-01-03', // 3 января (пятница)
+    to: '2025-05-10',   // 10 мая (суббота)
+    description: 'Перенос с 3 января на 10 мая'
+  },
+  {
+    from: '2025-01-06', // 6 января (понедельник)
+    to: '2025-05-12',   // 12 мая (понедельник)
+    description: 'Перенос с 6 января на 12 мая'
+  },
+  {
+    from: '2025-01-08', // 8 января (среда)
+    to: '2025-05-13',   // 13 мая (вторник)
+    description: 'Перенос с 8 января на 13 мая'
+  }
 ];
 
 function isDateInList(date: Date, list: string[]): boolean {
@@ -52,7 +65,6 @@ export function isHoliday(date: Date): boolean {
 }
 
 export function getHolidayName(date: Date): string | undefined {
-  // Можно добавить названия праздников по дате, если нужно
   const dateStr = date.toISOString().split('T')[0];
   switch (dateStr) {
     case '2025-01-01':
@@ -83,97 +95,138 @@ export function getHolidayName(date: Date): string | undefined {
 }
 
 export function isTransferredWorkingDay(date: Date): boolean {
-  // Нет переносов в 2025
-  return false;
+  const dateStr = date.toISOString().split('T')[0];
+  return TRANSFERS_2025.some(transfer => transfer.to === dateStr);
 }
 
 export function getTransferredFrom(date: Date): Date | undefined {
-  return undefined;
+  const dateStr = date.toISOString().split('T')[0];
+  const transfer = TRANSFERS_2025.find(t => t.to === dateStr);
+  return transfer ? new Date(transfer.from) : undefined;
 }
 
 export function isWorkingDay(date: Date): boolean {
-  // Если это праздник или выходной
-  if (isHoliday(date) || isWeekend(date)) {
+  // Если это праздник, то не рабочий день
+  if (isHoliday(date)) {
     return false;
   }
+  
+  // Если это перенесенный рабочий день, то рабочий
+  if (isTransferredWorkingDay(date)) {
+    return true;
+  }
+  
+  // Если это выходной, то не рабочий день
+  if (isWeekend(date)) {
+    return false;
+  }
+  
+  // В остальных случаях - рабочий день
   return true;
 }
 
-export function getCalendarDay(date: Date): CalendarDay {
-  return {
-    date,
-    isWeekend: isWeekend(date),
-    isHoliday: isHoliday(date),
-    isWorkingDay: isWorkingDay(date),
-    holidayName: getHolidayName(date),
-    isTransferred: isTransferredWorkingDay(date),
-    transferredFrom: getTransferredFrom(date),
-  };
-}
-
-export function getMonthCalendar(year: number, month: number): CalendarDay[] {
-  const days: CalendarDay[] = [];
-  const firstDayOfMonth = new Date(year, month - 1, 1);
-  const lastDayOfMonth = new Date(year, month, 0);
-
-  // Начало и конец календарной сетки (с понедельника по воскресенье)
-  const calendarStart = startOfWeek(firstDayOfMonth, { weekStartsOn: 1 });
-  const calendarEnd = endOfWeek(lastDayOfMonth, { weekStartsOn: 1 });
-
-  let current = calendarStart;
-  while (current <= calendarEnd) {
-    days.push(getCalendarDay(new Date(current)));
-    current = addDays(current, 1);
-  }
-
-  return days;
-}
-
-export function getWorkingDaysInPeriod(startDate: Date, endDate: Date): Date[] {
-  const workingDays: Date[] = [];
-  const currentDate = new Date(startDate);
-
-  while (currentDate <= endDate) {
-    if (isWorkingDay(currentDate)) {
-      workingDays.push(new Date(currentDate));
-    }
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
-
-  return workingDays;
-}
-
-export function getHolidaysInPeriod(startDate: Date, endDate: Date): CalendarDay[] {
-  const holidays: CalendarDay[] = [];
-  const currentDate = new Date(startDate);
-
-  while (currentDate <= endDate) {
-    if (isHoliday(currentDate)) {
-      holidays.push(getCalendarDay(currentDate));
-    }
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
-
-  return holidays;
-}
-
-// Получение информации о календаре на 2025 год
 export function getYear2025Info() {
   const year = 2025;
-  const totalDays = 365; // 2025 не високосный
-  const workingDays = getWorkingDaysInPeriod(
-    new Date(year, 0, 1),
-    new Date(year, 11, 31)
-  ).length;
-  const holidays = HOLIDAYS_2025.length;
-  const weekends = totalDays - workingDays - holidays;
-
+  const totalDays = 365;
+  
+  let workingDays = 0;
+  let holidays = 0;
+  let weekends = 0;
+  
+  // Проходим по всем дням года
+  for (let month = 0; month < 12; month++) {
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day);
+      
+      if (isHoliday(date)) {
+        holidays++;
+      } else if (isWorkingDay(date)) {
+        workingDays++;
+      } else {
+        weekends++;
+      }
+    }
+  }
+  
   return {
     year,
     totalDays,
     workingDays,
     holidays,
-    weekends,
-    transfers: 0,
+    weekends
   };
+}
+
+export function getMonthCalendar(year: number, month: number): CalendarDay[] {
+  const days: CalendarDay[] = [];
+  const firstDay = new Date(year, month - 1, 1);
+  const lastDay = new Date(year, month, 0);
+  
+  // Получаем первый день недели для начала календаря
+  const startDate = startOfWeek(firstDay, { weekStartsOn: 1 }); // Начинаем с понедельника
+  const endDate = endOfWeek(lastDay, { weekStartsOn: 1 });
+  
+  let currentDate = startDate;
+  
+  while (currentDate <= endDate) {
+    const day: CalendarDay = {
+      date: new Date(currentDate),
+      isWeekend: isWeekend(currentDate),
+      isHoliday: isHoliday(currentDate),
+      isWorkingDay: isWorkingDay(currentDate),
+      holidayName: getHolidayName(currentDate),
+      isTransferred: isTransferredWorkingDay(currentDate),
+      transferredFrom: getTransferredFrom(currentDate)
+    };
+    
+    days.push(day);
+    currentDate = addDays(currentDate, 1);
+  }
+  
+  return days;
+}
+
+export function getHolidaysInPeriod(startDate: Date, endDate: Date): Array<{ date: Date; holidayName: string }> {
+  const holidays: Array<{ date: Date; holidayName: string }> = [];
+  let currentDate = new Date(startDate);
+  
+  while (currentDate <= endDate) {
+    if (isHoliday(currentDate)) {
+      const holidayName = getHolidayName(currentDate);
+      if (holidayName) {
+        holidays.push({
+          date: new Date(currentDate),
+          holidayName
+        });
+      }
+    }
+    currentDate = addDays(currentDate, 1);
+  }
+  
+  return holidays;
+}
+
+export function getWorkingDaysInPeriod(startDate: Date, endDate: Date): Date[] {
+  const workingDays: Date[] = [];
+  let currentDate = new Date(startDate);
+  
+  while (currentDate <= endDate) {
+    if (isWorkingDay(currentDate)) {
+      workingDays.push(new Date(currentDate));
+    }
+    currentDate = addDays(currentDate, 1);
+  }
+  
+  return workingDays;
+}
+
+// Функция для получения переносов рабочих дней
+export function getTransfers2025() {
+  return TRANSFERS_2025.map(transfer => ({
+    from: new Date(transfer.from),
+    to: new Date(transfer.to),
+    description: transfer.description
+  }));
 } 

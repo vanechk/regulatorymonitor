@@ -1,16 +1,52 @@
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { apiClient, type Report } from '../../client/api';
-import { Button, Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter, Skeleton } from '../../components/ui';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiClient, type Report } from '../api';
+import { Button } from '../../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../../components/ui/card';
 import { Separator } from '../../components/ui/separator';
-import { FileSpreadsheet, Calendar, FileText, Download, Search } from 'lucide-react';
+import { Skeleton } from '../../components/ui/skeleton';
+import { FileSpreadsheet, Calendar, FileText, Download, Search, Trash2 } from 'lucide-react';
+import { useToast } from '../hooks/use-toast';
 
-function Reports() {
+const Reports: React.FC = () => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [deletingReportId, setDeletingReportId] = useState<string | null>(null);
+
   // Fetch reports
   const { data: reports = [], isLoading } = useQuery<Report[]>({
     queryKey: ['reports'],
     queryFn: apiClient.listReports,
   });
+
+  // Mutation для удаления отчета
+  const deleteReportMutation = useMutation({
+    mutationFn: apiClient.deleteReport,
+    onSuccess: (data) => {
+      toast({
+        title: "Отчет удален",
+        description: data.message,
+      });
+      // Обновляем список отчетов
+      queryClient.invalidateQueries({ queryKey: ['reports'] });
+      setDeletingReportId(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Ошибка удаления",
+        description: error.message,
+        variant: "destructive",
+      });
+      setDeletingReportId(null);
+    },
+  });
+
+  const handleDeleteReport = (reportId: string) => {
+    if (confirm('Вы уверены, что хотите удалить этот отчет? Это действие нельзя отменить.')) {
+      setDeletingReportId(reportId);
+      deleteReportMutation.mutate(reportId);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -81,13 +117,23 @@ function Reports() {
                   )}
                 </div>
               </CardContent>
-              <CardFooter>
+              <CardFooter className="flex justify-between">
                 <Button
                   variant="outline"
                   onClick={() => window.open(report.fileUrl, "_blank")}
                 >
                   <Download className="mr-2 h-4 w-4" />
                   Скачать Excel
+                </Button>
+                
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => handleDeleteReport(report.id)}
+                  disabled={deletingReportId === report.id}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {deletingReportId === report.id ? 'Удаление...' : 'Удалить'}
                 </Button>
               </CardFooter>
             </Card>
@@ -96,6 +142,6 @@ function Reports() {
       )}
     </div>
   );
-}
+};
 
 export default Reports; 

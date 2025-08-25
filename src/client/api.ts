@@ -33,11 +33,11 @@ export const ReportSchema = z.object({
   id: z.string(),
   name: z.string(),
   fileUrl: z.string(),
-  dateFrom: z.date(),
-  dateTo: z.date(),
+  dateFrom: z.string(),
+  dateTo: z.string(),
   keywordsUsed: z.string(),
   itemCount: z.number(),
-  createdAt: z.date()
+  createdAt: z.string()
 });
 
 export const EmailSettingsSchema = z.object({
@@ -72,7 +72,7 @@ export const apiClient = {
 
   toggleSource: async ({ id, isEnabled }: { id: string; isEnabled: boolean }): Promise<Source> => {
     const response = await fetch(`/api/sources/${id}/toggle`, {
-      method: 'POST',
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ isEnabled })
     });
@@ -225,9 +225,22 @@ export const apiClient = {
 
   // Отчеты
   listReports: async (): Promise<Report[]> => {
-    const response = await fetch('/api/reports');
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+    const response = await fetch('/api/reports', {
+      headers: token ? { 'Authorization': `Bearer ${token}` } : undefined
+    });
+    if (!response.ok) {
+      let errorText = 'Ошибка загрузки отчетов';
+      try {
+        const error = await response.json();
+        errorText = error.error || errorText;
+      } catch (e) {}
+      throw new Error(errorText);
+    }
     const data = await response.json();
-    return z.array(ReportSchema).parse(data);
+    // На сервере возвращается объект { reports: [...] }
+    // Для статистики нам нужна только длина массива, поэтому не жёстко валидируем схему
+    return Array.isArray((data as any).reports) ? (data as any).reports as Report[] : [] as Report[];
   },
 
   exportToExcel: async ({ dateFrom, dateTo, keywords, sourceType }: {
@@ -340,10 +353,14 @@ export const apiClient = {
     subject?: string;
     message?: string;
   }) => {
+    // Получаем токен для авторизации
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+    
     const response = await fetch('/api/news/send-email', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
       },
       body: JSON.stringify({
         email,
@@ -367,9 +384,15 @@ export const apiClient = {
 
   // Отправка отчёта в Telegram
   sendTelegramReport: async ({ text }: { text: string }): Promise<{ ok: boolean; message: string }> => {
+    // Получаем токен для авторизации
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+    
     const response = await fetch('/api/telegram/report', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
       body: JSON.stringify({ text })
     });
     if (!response.ok) {
@@ -394,6 +417,101 @@ export const apiClient = {
 
     if (!response.ok) {
       let errorText = 'Ошибка при тестовом экспорте';
+      try {
+        const error = await response.json();
+        errorText = error.error || errorText;
+      } catch (e) {}
+      throw new Error(errorText);
+    }
+
+    return response.json();
+  },
+
+  // Удаление отчета
+  deleteReport: async (reportId: string): Promise<{ message: string; deletedReportId: string }> => {
+    // Получаем токен для авторизации
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+    
+    const response = await fetch(`/api/reports/${reportId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+    });
+
+    if (!response.ok) {
+      let errorText = 'Ошибка при удалении отчета';
+      try {
+        const error = await response.json();
+        errorText = error.error || errorText;
+      } catch (e) {}
+      throw new Error(errorText);
+    }
+
+    return response.json();
+  },
+
+  // Telegram настройки
+  getTelegramSettings: async (): Promise<{ settings: any }> => {
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+    
+    const response = await fetch('/api/reports/settings/telegram', {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+    });
+
+    if (!response.ok) {
+      let errorText = 'Ошибка получения настроек Telegram';
+      try {
+        const error = await response.json();
+        errorText = error.error || errorText;
+      } catch (e) {}
+      throw new Error(errorText);
+    }
+
+    return response.json();
+  },
+
+  updateTelegramSettings: async (settings: any): Promise<{ message: string; settings: any }> => {
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+    
+    const response = await fetch('/api/reports/settings/telegram', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify(settings),
+    });
+
+    if (!response.ok) {
+      let errorText = 'Ошибка обновления настроек Telegram';
+      try {
+        const error = await response.json();
+        errorText = error.error || errorText;
+      } catch (e) {}
+      throw new Error(errorText);
+    }
+
+    return response.json();
+  },
+
+  testTelegramConnection: async (): Promise<{ success: boolean }> => {
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+    
+    const response = await fetch('/api/reports/test/telegram', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+    });
+
+    if (!response.ok) {
+      let errorText = 'Ошибка тестирования Telegram соединения';
       try {
         const error = await response.json();
         errorText = error.error || errorText;

@@ -20,6 +20,16 @@
       --input: 220 32% 91%;
       --ring: 220 85% 45%;
       --radius: 0.375rem;
+      
+      /* Дополнительные цвета темы - будут динамически обновляться */
+      --primary-light: 220 85% 65%;
+      --primary-lighter: 220 85% 85%;
+      --primary-dark: 220 85% 25%;
+      --primary-darker: 220 85% 5%;
+      --primary-hover: 220 85% 35%;
+      --accent-hover: 220 85% 35%;
+      --focus: 220 85% 45%;
+      --selection: 220 85% 75%;
     }
    
     .dark {
@@ -42,5 +52,98 @@
       --border: 220 33% 18%;
       --input: 220 33% 18%;
       --ring: 220 85% 45%;
+      
+      /* Дополнительные цвета темы для темной темы - будут динамически обновляться */
+      --primary-light: 220 85% 65%;
+      --primary-lighter: 220 85% 85%;
+      --primary-dark: 220 85% 25%;
+      --primary-darker: 220 85% 5%;
+      --primary-hover: 220 85% 35%;
+      --accent-hover: 220 85% 35%;
+      --focus: 220 85% 45%;
+      --selection: 220 85% 75%;
     }
   }
+
+/* Применение цветов темы к элементам интерфейса */
+@layer components {
+  /* Фон с градиентом */
+  .bg-theme-gradient {
+    background: linear-gradient(135deg, hsl(var(--primary-lighter)) 0%, hsl(var(--primary-light)) 50%, hsl(var(--primary)) 100%);
+  }
+  
+  .bg-theme-gradient-subtle {
+    background: linear-gradient(135deg, hsl(var(--primary-lighter)) 0%, hsl(var(--background)) 100%);
+  }
+  
+  /* Кнопки */
+  .btn-primary {
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border-color: hsl(var(--primary));
+  }
+  
+  .btn-primary:hover {
+    background-color: hsl(var(--primary-hover));
+    border-color: hsl(var(--primary-hover));
+  }
+  
+  .btn-outline {
+    border-color: hsl(var(--primary));
+    color: hsl(var(--primary));
+  }
+  
+  .btn-outline:hover {
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+  }
+  
+  /* Переключатели */
+  .switch-checked {
+    background-color: hsl(var(--primary));
+  }
+  
+  .switch-thumb {
+    background-color: hsl(var(--primary-foreground));
+  }
+  
+  /* Прогресс бары */
+  .progress-bar {
+    background-color: hsl(var(--primary));
+  }
+  
+  /* Ссылки */
+  a {
+    color: hsl(var(--primary));
+  }
+  
+  a:hover {
+    color: hsl(var(--primary-hover));
+  }
+  
+  /* Фокус */
+  *:focus {
+    outline-color: hsl(var(--focus));
+  }
+  
+  /* Выделение текста */
+  ::selection {
+    background-color: hsl(var(--selection));
+  }
+  
+  /* Границы */
+  .border-theme {
+    border-color: hsl(var(--primary));
+  }
+  
+  /* Тени */
+  .shadow-theme {
+    box-shadow: 0 4px 14px 0 hsl(var(--primary) / 0.3);
+  }
+  
+  /* Hover эффекты для карточек */
+  .card:hover {
+    border-color: hsl(var(--primary));
+    box-shadow: 0 4px 14px 0 hsl(var(--primary) / 0.2);
+  }
+}
